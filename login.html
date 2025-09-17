@@ -3,26 +3,40 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NexusLearn AI - Giriş Yap</title>
+    <title>NexusLearn Pro - Giriş Yap</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
-    <div class="container">
-        <div class="login-container">
+    <div class="background-blur"></div>
+    <div class="login-page-container">
+        <div class="login-container widget">
             <header class="ai-header">
-                <h1>NexusLearn AI</h1>
+                <h1>NexusLearn Pro</h1>
                 <p>Öğrenme potansiyelini ortaya çıkar.</p>
             </header>
 
             <div class="login-box">
-                <input type="email" id="email" placeholder="E-posta Adresi" required>
-                <input type="password" id="password" placeholder="Şifre" required>
-                <button id="login-button">Giriş Yap</button>
-                <button id="signup-button">Kayıt Ol</button>
+                <div class="input-group">
+                    <label for="email">E-posta</label>
+                    <input type="email" id="email" placeholder="E-posta Adresi" required>
+                </div>
+                <div class="input-group">
+                    <label for="password">Şifre</label>
+                    <input type="password" id="password" placeholder="Şifre" required>
+                </div>
+                
                 <p class="error-message" id="error-message"></p>
-                <div class="separator">veya</div>
-                <button id="google-signin-button">
-                    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google logo">
+
+                <div class="action-buttons">
+                    <button id="login-button" class="primary-button full-width">Giriş Yap</button>
+                    <button id="signup-button" class="secondary-action-button full-width">Kayıt Ol</button>
+                </div>
+
+                <div class="separator"><span>veya</span></div>
+                
+                <button id="google-signin-button" class="google-button full-width">
+                    <i class="fab fa-google"></i>
                     Google ile Giriş Yap
                 </button>
             </div>
