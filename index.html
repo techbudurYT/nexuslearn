@@ -38,9 +38,7 @@
                     <span id="user-display-name">Yükleniyor...</span>
                 </header>
                 <div class="dashboard-grid">
-                    <div id="stats-widget" class="widget">
-                        <!-- İstatistikler buraya yüklenecek -->
-                    </div>
+                    <div id="stats-widget" class="widget"></div>
                     <div id="chart-widget" class="widget">
                         <h3>Kategori Dağılımı</h3>
                         <canvas id="categoryChart"></canvas>
@@ -59,7 +57,7 @@
 
             <!-- ===== OLUŞTURUCU GÖRÜNÜMÜ ===== -->
             <div id="generator-view" class="view">
-                <header class="view-header">
+                 <header class="view-header">
                     <h2>Yeni Öğrenme Paketi Oluştur</h2>
                 </header>
                 <div class="generator-layout">
@@ -72,22 +70,24 @@
                             <label for="category-input">Kategori</label>
                             <input type="text" id="category-input" placeholder="Örn: Matematik">
                         </div>
-                        <button id="fetch-button" class="primary-button"><i class="fab fa-youtube"></i> Video Bul ve Planı Hazırla</button>
+                        <button id="fetch-button" class="primary-button"><i class="fab fa-youtube"></i> Video Bul</button>
                         <div id="status-indicator" style="display: none;">
                             <div class="spinner"></div>
                             <p id="status-text">Video aranıyor...</p>
                         </div>
                     </div>
+
                     <div id="results-container" class="hidden">
                         <div class="widget">
                             <h3>Konu Videosu</h3>
                             <div id="video-container"></div>
                         </div>
-                        <div class="widget">
-                            <h3><i class="fas fa-lightbulb"></i> AI Video Özeti (Simülasyon)</h3>
-                            <div id="ai-summary-container">
-                                <p>Video bulunduktan sonra, AI içeriği burada özetleyecektir.</p>
+                        <div id="quiz-widget" class="widget">
+                            <h3><i class="fas fa-question-circle"></i> Bilgini Test Et</h3>
+                            <div id="quiz-content">
+                                <!-- AI Test içeriği buraya gelecek -->
                             </div>
+                            <div id="quiz-results-container"></div>
                         </div>
                         <div class="widget">
                             <h3><i class="fas fa-tasks"></i> Öğrenme Adımları</h3>
@@ -137,6 +137,7 @@
     </div>
     
     <!-- Libraries -->
+    <script src="https://js.puter.com/v2/"></script> <!-- Yapay Zeka için Puter.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
