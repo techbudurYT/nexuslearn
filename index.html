@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NexusLearn AI v5.0 - The Phoenix</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header class="ai-header">
+            <h1>NexusLearn AI</h1>
+            <p>Öğrenmek istediğin dersi ve konuyu yaz, gerisini bana bırak.</p>
+        </header>
+
+        <div class="search-wrapper">
+            <input type="text" id="topic-input" placeholder="Örn: Fizik, Newton'un Hareket Yasaları...">
+            <button id="fetch-button">Öğrenme Paketini Oluştur</button>
+        </div>
+
+        <div id="status-indicator" style="display: none;">
+            <div class="spinner"></div>
+            <p id="status-text">Analiz başlatılıyor...</p>
+        </div>
+
+        <main id="results-container" class="hidden">
+            <section class="result-widget" id="learning-plan-widget">
+                <h2>Senin İçin Hazırlanan Öğrenme Planı</h2>
+                <div id="learning-plan-container"></div>
+            </section>
+            
+            <section class="result-widget" id="video-widget">
+                <h2>Önerilen Konu Anlatım Videosu</h2>
+                <div id="video-container"></div>
+            </section>
+
+            <section class="result-widget" id="key-concepts-widget">
+                <h2>Konunun Anahtar Kavramları</h2>
+                <div id="key-concepts-container"></div>
+            </section>
+
+            <section class="result-widget" id="open-questions-widget">
+                <h2>Kritik Düşünme Soruları</h2>
+                <div id="open-questions-container"></div>
+            </section>
+        </main>
+    </div>
+    
+    <script src="config.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
