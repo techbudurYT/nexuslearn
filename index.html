@@ -3,140 +3,148 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NexusLearn - Kontrol Paneli</title>
+    <title>NexusLearn Pro</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
-<body style="display: none;"> <!-- Sayfa başlangıçta gizli -->
-    <div id="toast-container"></div> <!-- Modern bildirimler için -->
+<body>
+    <div id="toast-container"></div>
+    <div class="background-blur"></div>
 
-    <div class="container">
-        <!-- ===== KONTROL PANELİ GÖRÜNÜMÜ ===== -->
-        <div id="dashboard-view">
-            <header class="dashboard-header">
-                <h1>NexusLearn</h1>
-                <div>
+    <div class="app-layout">
+        <nav class="sidebar">
+            <h1 class="logo">NL</h1>
+            <div class="nav-links">
+                <a href="#" class="nav-link active" data-view="dashboard-view"><i class="fas fa-chart-pie"></i><span>Kontrol Paneli</span></a>
+                <a href="#" class="nav-link" data-view="generator-view"><i class="fas fa-plus"></i><span>Yeni Paket</span></a>
+                <a href="#" class="nav-link" data-view="profile-view"><i class="fas fa-user-cog"></i><span>Profil</span></a>
+            </div>
+            <div id="pomodoro-widget">
+                <h3>Pomodoro</h3>
+                <div id="pomodoro-timer">25:00</div>
+                <div class="pomodoro-controls">
+                    <button id="pomo-start-pause"><i class="fas fa-play"></i></button>
+                    <button id="pomo-reset"><i class="fas fa-undo"></i></button>
+                </div>
+            </div>
+            <button id="logout-button"><i class="fas fa-sign-out-alt"></i><span>Çıkış Yap</span></button>
+        </nav>
+
+        <main class="main-content">
+            <!-- ===== KONTROL PANELİ GÖRÜNÜMÜ ===== -->
+            <div id="dashboard-view" class="view active">
+                <header class="view-header">
+                    <h2>Kontrol Paneli</h2>
                     <span id="user-display-name">Yükleniyor...</span>
-                    <button id="profile-button" class="secondary-button">Profil</button>
-                    <button id="logout-button" class="secondary-button">Çıkış Yap</button>
+                </header>
+                <div class="dashboard-grid">
+                    <div id="stats-widget" class="widget">
+                        <!-- İstatistikler buraya yüklenecek -->
+                    </div>
+                    <div id="chart-widget" class="widget">
+                        <h3>Kategori Dağılımı</h3>
+                        <canvas id="categoryChart"></canvas>
+                    </div>
                 </div>
-            </header>
-            <main>
-                <div id="stats-widget" class="result-widget">
-                    <!-- İstatistikler buraya yüklenecek -->
-                </div>
-
-                <div class="dashboard-actions">
-                    <h2>Öğrenme Paketlerim</h2>
+                 <div class="dashboard-actions">
+                    <h3>Öğrenme Paketlerim</h3>
                     <div class="filter-wrapper">
-                        <span>Kategoriye göre filtrele:</span>
                         <select id="category-filter">
-                            <option value="all">Tümü</option>
+                            <option value="all">Tüm Kategoriler</option>
                         </select>
                     </div>
-                    <button id="new-plan-button">Yeni Paket Oluştur</button>
                 </div>
-                <div id="saved-plans-container">
-                    <!-- Kayıtlı planlar buraya yüklenecek -->
-                </div>
-            </main>
-        </div>
-
-        <!-- ===== OLUŞTURUCU GÖRÜNÜMÜ ===== -->
-        <div id="generator-view" class="hidden">
-            <header class="ai-header">
-                <h1>Yeni Öğrenme Paketi</h1>
-                <p>Konu başlığını yazarak video bul ve kendi öğrenme notlarını oluştur.</p>
-            </header>
-            
-            <div class="form-grid">
-                <div class="search-wrapper">
-                    <input type="text" id="topic-input" placeholder="Örn: Biyoloji, Mitoz Bölünme...">
-                    <input type="text" id="category-input" placeholder="Kategori (Örn: Biyoloji)">
-                </div>
-                <button id="fetch-button">Video Bul ve Planı Hazırla</button>
-            </div>
-            <button id="back-to-dashboard-button" class="secondary-button back-button">Panele Geri Dön</button>
-            
-            <div id="status-indicator" style="display: none;">
-                <div class="spinner"></div>
-                <p id="status-text">Video aranıyor...</p>
+                <div id="saved-plans-container"></div>
             </div>
 
-            <main id="results-container" class="hidden">
-                 <section class="result-widget" id="video-widget">
-                    <h2>Konu Anlatım Videosu</h2>
-                    <div id="video-container"></div>
-                </section>
-
-                <section class="result-widget">
-                    <h2>Öğrenme Planı (Adımlar)</h2>
-                    <div id="learning-plan-checklist">
-                        <!-- Dinamik adımlar buraya eklenecek -->
+            <!-- ===== OLUŞTURUCU GÖRÜNÜMÜ ===== -->
+            <div id="generator-view" class="view">
+                <header class="view-header">
+                    <h2>Yeni Öğrenme Paketi Oluştur</h2>
+                </header>
+                <div class="generator-layout">
+                    <div class="form-section widget">
+                        <div class="input-group">
+                            <label for="topic-input">Konu Başlığı</label>
+                            <input type="text" id="topic-input" placeholder="Örn: Matematik, Türev...">
+                        </div>
+                        <div class="input-group">
+                            <label for="category-input">Kategori</label>
+                            <input type="text" id="category-input" placeholder="Örn: Matematik">
+                        </div>
+                        <button id="fetch-button" class="primary-button"><i class="fab fa-youtube"></i> Video Bul ve Planı Hazırla</button>
+                        <div id="status-indicator" style="display: none;">
+                            <div class="spinner"></div>
+                            <p id="status-text">Video aranıyor...</p>
+                        </div>
                     </div>
-                    <div class="add-step-wrapper">
-                        <input type="text" id="new-step-input" placeholder="Yeni bir adım ekle...">
-                        <button id="add-step-button">+</button>
-                    </div>
-                </section>
-                
-                <section class="result-widget">
-                    <h2>Anahtar Kavramlar</h2>
-                    <textarea id="key-concepts-input" placeholder="Konunun en önemli anahtar kelimelerini veya kavramlarını not al..."></textarea>
-                </section>
-
-                <section class="result-widget">
-                    <h2>Kritik Düşünme Soruları</h2>
-                    <textarea id="open-questions-input" placeholder="Konuyu daha derin anlamak için kendine hangi soruları sorardın?"></textarea>
-                </section>
-
-                <div class="result-actions">
-                     <button id="save-plan-button">Planı Kaydet</button>
-                </div>
-            </main>
-        </div>
-
-        <!-- ===== PROFİL GÖRÜNÜMÜ ===== -->
-        <div id="profile-view" class="hidden">
-            <header class="ai-header">
-                <h1>Profil ve Ayarlar</h1>
-            </header>
-            <button id="back-to-dashboard-from-profile" class="secondary-button back-button">Panele Geri Dön</button>
-            
-            <main class="profile-main">
-                <div class="result-widget">
-                    <h2>Görünen Adı Değiştir</h2>
-                    <div class="profile-form">
-                        <input type="text" id="display-name-input" placeholder="Yeni görünen ad">
-                        <button id="update-display-name-button">Kaydet</button>
-                    </div>
-                </div>
-
-                <div class="result-widget">
-                    <h2>Şifre Değiştir</h2>
-                    <div class="profile-form">
-                        <input type="password" id="new-password-input" placeholder="Yeni şifre">
-                        <input type="password" id="confirm-password-input" placeholder="Yeni şifre (tekrar)">
-                        <button id="update-password-button">Şifreyi Güncelle</button>
+                    <div id="results-container" class="hidden">
+                        <div class="widget">
+                            <h3>Konu Videosu</h3>
+                            <div id="video-container"></div>
+                        </div>
+                        <div class="widget">
+                            <h3><i class="fas fa-lightbulb"></i> AI Video Özeti (Simülasyon)</h3>
+                            <div id="ai-summary-container">
+                                <p>Video bulunduktan sonra, AI içeriği burada özetleyecektir.</p>
+                            </div>
+                        </div>
+                        <div class="widget">
+                            <h3><i class="fas fa-tasks"></i> Öğrenme Adımları</h3>
+                            <div id="learning-plan-checklist"></div>
+                            <div class="add-step-wrapper">
+                                <input type="text" id="new-step-input" placeholder="Yeni bir adım ekle...">
+                                <button id="add-step-button">+</button>
+                            </div>
+                        </div>
+                        <div class="widget">
+                            <h3><i class="fas fa-key"></i> Anahtar Kavramlar</h3>
+                            <textarea id="key-concepts-input" placeholder="Konunun en önemli kavramlarını not al..."></textarea>
+                        </div>
+                        <button id="save-plan-button" class="primary-button full-width"><i class="fas fa-save"></i> Öğrenme Paketini Kaydet</button>
                     </div>
                 </div>
+            </div>
 
-                <div class="result-widget danger-zone">
-                    <h2>Hesabı Sil</h2>
-                    <p>Bu işlem geri alınamaz. Tüm öğrenme paketleriniz ve verileriniz kalıcı olarak silinecektir.</p>
-                    <button id="delete-account-button" class="danger-button">Hesabımı Kalıcı Olarak Sil</button>
+            <!-- ===== PROFİL GÖRÜNÜMÜ ===== -->
+            <div id="profile-view" class="view">
+                 <header class="view-header">
+                    <h2>Profil ve Ayarlar</h2>
+                </header>
+                <div class="profile-main">
+                    <div class="widget">
+                        <h3>Görünen Adı Değiştir</h3>
+                        <div class="profile-form">
+                            <input type="text" id="display-name-input" placeholder="Yeni görünen ad">
+                            <button id="update-display-name-button" class="primary-button">Kaydet</button>
+                        </div>
+                    </div>
+                    <div class="widget">
+                        <h3>Şifre Değiştir</h3>
+                        <div class="profile-form">
+                            <input type="password" id="new-password-input" placeholder="Yeni şifre">
+                            <button id="update-password-button" class="primary-button">Güncelle</button>
+                        </div>
+                    </div>
+                    <div class="widget danger-zone">
+                        <h3>Tehlikeli Alan</h3>
+                        <p>Bu işlem geri alınamaz. Tüm verileriniz kalıcı olarak silinecektir.</p>
+                        <button id="delete-account-button" class="danger-button">Hesabımı Sil</button>
+                    </div>
                 </div>
-            </main>
-        </div>
+            </div>
+        </main>
     </div>
     
-    <!-- Firebase SDK -->
+    <!-- Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore-compat.js"></script>
 
     <!-- App Scripts -->
     <script src="firebase-config.js"></script>
-    <script src="config.js"></script> <!-- YOUTUBE_API_KEY için -->
+    <script src="config.js"></script>
     <script src="app.js"></script>
 </body>
 </html>
