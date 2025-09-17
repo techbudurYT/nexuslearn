@@ -172,39 +172,31 @@ async function loadSavedPlans() {
     });
 }
 
-// ----- AI & YOUTUBE API (script.js'ten alındı) -----
+// ----- YENİ: PUTER.JS İLE AI ETKİLEŞİMİ -----
 async function runAiAnalysis(userQuery) {
-    const AI_ENDPOINTS = [
-        'https://api.chatanywhere.tech/v1/chat/completions',
-        'https://free.churchless.tech/v1/chat/completions',
-        'https://api.pawan.krd/v1/chat/completions',
-        'https://ai.fakeopen.com/v1/chat/completions',
-        'https://openrouter.ai/api/v1/chat/completions'
-    ];
     const prompt = `Bir Türk lise öğrencisi için uzman bir öğrenme asistanı olarak hareket et. Kullanıcının öğrenmek istediği konu: "${userQuery}". Bana aşağıdaki formatta, başka hiçbir ek metin olmadan, geçerli bir JSON nesnesi döndür: { "youtubeSearchQueries": ["..."], "keyConcepts": ["..."], "learningPlan": ["..."], "openQuestions": ["..."] }`;
 
-    for (const API_URL of AI_ENDPOINTS) {
-        try {
-            const response = await fetch(API_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer dummy' },
-                body: JSON.stringify({
-                    "model": "gpt-3.5-turbo",
-                    "messages": [{ "role": "user", "content": prompt }]
-                })
-            });
-            if (!response.ok) continue;
-            const data = await response.json();
-            const rawJson = data.choices[0].message.content;
-            return JSON.parse(rawJson.replace(/```json/g, '').replace(/```/g, ''));
-        } catch (error) {
-            console.error(`AI Servis hatası: ${API_URL}`, error);
-            continue;
-        }
+    try {
+        console.log("Puter.js AI servisi çağrılıyor...");
+        // Puter.js'in `ai.chat` metodunu kullanarak AI'dan yanıt alıyoruz.
+        // GPT-4o gibi daha güçlü bir model kullanarak daha kaliteli sonuçlar elde ediyoruz.
+        const result = await puter.ai.chat([{
+            role: 'user',
+            content: prompt
+        }], { model: 'gpt-4o' });
+
+        const rawJson = result.message.content;
+        // AI'ın başına veya sonuna ekleyebileceği markdown formatını temizliyoruz.
+        return JSON.parse(rawJson.replace(/```json/g, '').replace(/```/g, ''));
+
+    } catch (error) {
+        console.error("Puter.js AI servisinde hata:", error);
+        throw new Error("AI analizi sırasında bir hata oluştu. Lütfen Puter.js entegrasyonunu kontrol edin veya daha sonra tekrar deneyin.");
     }
-    throw new Error("Tüm yedek AI servisleri yanıt vermedi. Lütfen birkaç dakika sonra tekrar deneyin.");
 }
 
+
+// ----- YOUTUBE ETKİLEŞİMİ -----
 async function fetchBestVideo(searchQueries) {
     const query = searchQueries[0];
     const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query)}&maxResults=1&type=video&key=${YOUTUBE_API_KEY}`;
