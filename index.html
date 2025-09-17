@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NexusLearn AI - Kontrol Paneli</title>
+    <title>NexusLearn - Kontrol Paneli</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body style="display: none;"> <!-- Sayfa başlangıçta gizli -->
@@ -11,9 +11,10 @@
         <!-- ===== KONTROL PANELİ GÖRÜNÜMÜ ===== -->
         <div id="dashboard-view">
             <header class="dashboard-header">
-                <h1>NexusLearn AI</h1>
+                <h1>NexusLearn</h1>
                 <div>
                     <span id="user-display-name">Yükleniyor...</span>
+                    <button id="profile-button" class="secondary-button">Profil</button>
                     <button id="logout-button" class="secondary-button">Çıkış Yap</button>
                 </div>
             </header>
@@ -32,52 +33,89 @@
         <div id="generator-view" class="hidden">
             <header class="ai-header">
                 <h1>Yeni Öğrenme Paketi</h1>
-                <p>Öğrenmek istediğin dersi ve konuyu yaz, gerisini bana bırak.</p>
+                <p>Konu başlığını yazarak video bul ve kendi öğrenme notlarını oluştur.</p>
             </header>
 
             <div class="search-wrapper">
                 <input type="text" id="topic-input" placeholder="Örn: Biyoloji, Mitoz Bölünme...">
-                <button id="fetch-button">Öğrenme Paketini Oluştur</button>
+                <button id="fetch-button">Video Bul ve Planı Hazırla</button>
             </div>
             <button id="back-to-dashboard-button" class="secondary-button back-button">Panele Geri Dön</button>
             
             <div id="status-indicator" style="display: none;">
                 <div class="spinner"></div>
-                <p id="status-text">Analiz başlatılıyor...</p>
+                <p id="status-text">Video aranıyor...</p>
             </div>
 
             <main id="results-container" class="hidden">
-                <section class="result-widget" id="learning-plan-widget">
-                    <h2>Senin İçin Hazırlanan Öğrenme Planı</h2>
-                    <div id="learning-plan-container"></div>
-                </section>
-                
-                <section class="result-widget" id="video-widget">
-                    <h2>Önerilen Konu Anlatım Videosu</h2>
+                 <section class="result-widget" id="video-widget">
+                    <h2>Konu Anlatım Videosu</h2>
                     <div id="video-container"></div>
                 </section>
 
-                <section class="result-widget" id="key-concepts-widget">
-                    <h2>Konunun Anahtar Kavramları</h2>
-                    <div id="key-concepts-container"></div>
+                <section class="result-widget">
+                    <h2>Öğrenme Planı (Adımlar)</h2>
+                    <textarea id="learning-plan-input" placeholder="Bu konuyu öğrenmek için izleyeceğin adımları listele..."></textarea>
+                </section>
+                
+                <section class="result-widget">
+                    <h2>Anahtar Kavramlar</h2>
+                    <textarea id="key-concepts-input" placeholder="Konunun en önemli anahtar kelimelerini veya kavramlarını not al..."></textarea>
                 </section>
 
-                <section class="result-widget" id="open-questions-widget">
+                <section class="result-widget">
                     <h2>Kritik Düşünme Soruları</h2>
-                    <div id="open-questions-container"></div>
+                    <textarea id="open-questions-input" placeholder="Konuyu daha derin anlamak için kendine hangi soruları sorardın?"></textarea>
                 </section>
 
                 <div class="result-actions">
-                     <button id="save-plan-button" class="hidden">Planı Kaydet ve Panele Dön</button>
+                     <button id="save-plan-button">Planı Kaydet</button>
+                </div>
+            </main>
+        </div>
+
+        <!-- ===== PROFİL GÖRÜNÜMÜ ===== -->
+        <div id="profile-view" class="hidden">
+            <header class="ai-header">
+                <h1>Profil ve Ayarlar</h1>
+            </header>
+            <button id="back-to-dashboard-from-profile" class="secondary-button back-button">Panele Geri Dön</button>
+            
+            <main class="profile-main">
+                <div class="result-widget">
+                    <h2>Görünen Adı Değiştir</h2>
+                    <div class="profile-form">
+                        <input type="text" id="display-name-input" placeholder="Yeni görünen ad">
+                        <button id="update-display-name-button">Kaydet</button>
+                    </div>
+                </div>
+
+                <div class="result-widget">
+                    <h2>Şifre Değiştir</h2>
+                    <div class="profile-form">
+                        <input type="password" id="new-password-input" placeholder="Yeni şifre">
+                        <input type="password" id="confirm-password-input" placeholder="Yeni şifre (tekrar)">
+                        <button id="update-password-button">Şifreyi Güncelle</button>
+                    </div>
+                </div>
+
+                <div class="result-widget danger-zone">
+                    <h2>Hesabı Sil</h2>
+                    <p>Bu işlem geri alınamaz. Tüm öğrenme paketleriniz ve verileriniz kalıcı olarak silinecektir.</p>
+                    <button id="delete-account-button" class="danger-button">Hesabımı Kalıcı Olarak Sil</button>
                 </div>
             </main>
         </div>
     </div>
     
-    <!-- Puter.js SDK for AI -->
-    <script src="https://js.puter.com/v2/"></script>
-    
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore-compat.js"></script>
+
+    <!-- App Scripts -->
+    <script src="firebase-config.js"></script>
+    <script src="config.js"></script> <!-- YOUTUBE_API_KEY için -->
+    <script src="app.js"></script>
+</body>
+</html>
