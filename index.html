@@ -1,11 +1,151 @@
-<html>
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NexusLearn Pro</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
 <body>
-    <script src="https://js.puter.com/v2/"></script>
-    <script>
-    (async () => {
-        const resp = await puter.ai.chat('Tell me in detail what Rick and Morty is all about.', {model: 'claude', stream: true });
-        for await ( const part of resp ) puter.print(part?.text?.replaceAll('\n', '<br>'));
-    })();
-    </script>
+    <div id="toast-container"></div>
+    <div class="background-blur"></div>
+
+    <div class="app-layout">
+        <nav class="sidebar">
+            <h1 class="logo">NL</h1>
+            <div class="nav-links">
+                <a href="#" class="nav-link active" data-view="dashboard-view"><i class="fas fa-chart-pie"></i><span>Kontrol Paneli</span></a>
+                <a href="#" class="nav-link" data-view="generator-view"><i class="fas fa-plus"></i><span>Yeni Paket</span></a>
+                <a href="#" class="nav-link" data-view="profile-view"><i class="fas fa-user-cog"></i><span>Profil</span></a>
+            </div>
+            <div id="pomodoro-widget">
+                <h3>Pomodoro</h3>
+                <div id="pomodoro-timer">25:00</div>
+                <div class="pomodoro-controls">
+                    <button id="pomo-start-pause"><i class="fas fa-play"></i></button>
+                    <button id="pomo-reset"><i class="fas fa-undo"></i></button>
+                </div>
+            </div>
+            <button id="logout-button"><i class="fas fa-sign-out-alt"></i><span>Çıkış Yap</span></button>
+        </nav>
+
+        <main class="main-content">
+            <!-- ===== KONTROL PANELİ GÖRÜNÜMÜ ===== -->
+            <div id="dashboard-view" class="view active">
+                <header class="view-header">
+                    <h2>Kontrol Paneli</h2>
+                    <span id="user-display-name">Yükleniyor...</span>
+                </header>
+                <div class="dashboard-grid">
+                    <div id="stats-widget" class="widget"></div>
+                    <div id="chart-widget" class="widget">
+                        <h3>Kategori Dağılımı</h3>
+                        <canvas id="categoryChart"></canvas>
+                    </div>
+                </div>
+                 <div class="dashboard-actions">
+                    <h3>Öğrenme Paketlerim</h3>
+                    <div class="filter-wrapper">
+                        <select id="category-filter">
+                            <option value="all">Tüm Kategoriler</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="saved-plans-container"></div>
+            </div>
+
+            <!-- ===== OLUŞTURUCU GÖRÜNÜMÜ ===== -->
+            <div id="generator-view" class="view">
+                 <header class="view-header">
+                    <h2>Yeni Öğrenme Paketi Oluştur</h2>
+                </header>
+                <div class="generator-layout">
+                    <div class="form-section widget">
+                        <div class="input-group">
+                            <label for="topic-input">Konu Başlığı</label>
+                            <input type="text" id="topic-input" placeholder="Örn: Matematik, Türev...">
+                        </div>
+                        <div class="input-group">
+                            <label for="category-input">Kategori</label>
+                            <input type="text" id="category-input" placeholder="Örn: Matematik">
+                        </div>
+                        <button id="fetch-button" class="primary-button"><i class="fab fa-youtube"></i> Video Bul</button>
+                        <div id="status-indicator" style="display: none;">
+                            <div class="spinner"></div>
+                            <p id="status-text">Video aranıyor...</p>
+                        </div>
+                    </div>
+
+                    <div id="results-container" class="hidden">
+                        <div class="widget">
+                            <h3>Konu Videosu</h3>
+                            <div id="video-container"></div>
+                        </div>
+                        <div id="quiz-widget" class="widget">
+                            <h3><i class="fas fa-question-circle"></i> Bilgini Test Et</h3>
+                            <div id="quiz-content">
+                                <!-- AI Test içeriği buraya gelecek -->
+                            </div>
+                            <div id="quiz-results-container"></div>
+                        </div>
+                        <div class="widget">
+                            <h3><i class="fas fa-tasks"></i> Öğrenme Adımları</h3>
+                            <div id="learning-plan-checklist"></div>
+                            <div class="add-step-wrapper">
+                                <input type="text" id="new-step-input" placeholder="Yeni bir adım ekle...">
+                                <button id="add-step-button">+</button>
+                            </div>
+                        </div>
+                        <div class="widget">
+                            <h3><i class="fas fa-key"></i> Anahtar Kavramlar</h3>
+                            <textarea id="key-concepts-input" placeholder="Konunun en önemli kavramlarını not al..."></textarea>
+                        </div>
+                        <button id="save-plan-button" class="primary-button full-width"><i class="fas fa-save"></i> Öğrenme Paketini Kaydet</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== PROFİL GÖRÜNÜMÜ ===== -->
+            <div id="profile-view" class="view">
+                 <header class="view-header">
+                    <h2>Profil ve Ayarlar</h2>
+                </header>
+                <div class="profile-main">
+                    <div class="widget">
+                        <h3>Görünen Adı Değiştir</h3>
+                        <div class="profile-form">
+                            <input type="text" id="display-name-input" placeholder="Yeni görünen ad">
+                            <button id="update-display-name-button" class="primary-button">Kaydet</button>
+                        </div>
+                    </div>
+                    <div class="widget">
+                        <h3>Şifre Değiştir</h3>
+                        <div class="profile-form">
+                            <input type="password" id="new-password-input" placeholder="Yeni şifre">
+                            <button id="update-password-button" class="primary-button">Güncelle</button>
+                        </div>
+                    </div>
+                    <div class="widget danger-zone">
+                        <h3>Tehlikeli Alan</h3>
+                        <p>Bu işlem geri alınamaz. Tüm verileriniz kalıcı olarak silinecektir.</p>
+                        <button id="delete-account-button" class="danger-button">Hesabımı Sil</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <!-- Libraries -->
+    <script src="https://js.puter.com/v2/"></script> <!-- Yapay Zeka için Puter.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore-compat.js"></script>
+
+    <!-- App Scripts -->
+    <script src="firebase-config.js"></script>
+    <script src="config.js"></script>
+    <script src="app.js"></script>
 </body>
 </html>
