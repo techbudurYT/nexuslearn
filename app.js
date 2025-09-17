@@ -92,7 +92,7 @@ async function handleFetchRequest() {
         currentVideoId = videoData.id;
         videoContainer.innerHTML = `<iframe src="https://www.youtube.com/embed/${videoData.id}" frameborder="0" allowfullscreen></iframe>`;
         resultsContainer.classList.remove('hidden');
-        renderQuizGeneratorButton(); // Quiz oluşturma butonunu göster
+        renderQuizGeneratorButton();
     } catch (error) {
         showToast(error.message, "error");
     } finally {
@@ -109,7 +109,7 @@ async function saveCurrentPlan() {
         videoId: currentVideoId,
         learningPlan: getChecklistData(),
         keyConcepts: keyConceptsInput.value.trim(),
-        quiz: currentQuizData, // AI tarafından oluşturulan quiz verisi
+        quiz: currentQuizData,
         isCompleted: false,
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     };
@@ -119,7 +119,6 @@ async function saveCurrentPlan() {
     try {
         savePlanButton.disabled = true;
         const planRef = db.collection('users').doc(currentUser.uid).collection('plans');
-
         if (currentPlanId) {
             await planRef.doc(currentPlanId).update(planData);
             showToast(`Plan güncellendi!`);
@@ -128,10 +127,8 @@ async function saveCurrentPlan() {
             await planRef.add(planData);
             showToast(`Plan kaydedildi!`);
         }
-        
         loadSavedPlans();
         handleNavClick(document.querySelector('.nav-link[data-view="dashboard-view"]'));
-
     } catch (error) {
         showToast("Plan kaydedilirken bir hata oluştu.", "error");
     } finally {
@@ -156,13 +153,8 @@ async function loadSavedPlans(filterCategory = 'all') {
     updateStatsAndCategories(allPlans);
 
     const filteredPlans = filterCategory === 'all' ? allPlans : allPlans.filter(plan => plan.category === filterCategory);
-
-    savedPlansContainer.innerHTML = '';
-    if (filteredPlans.length === 0) {
-        savedPlansContainer.innerHTML = '<p class="empty-state">Bu kategoride paket bulunamadı.</p>';
-        return;
-    }
-
+    savedPlansContainer.innerHTML = filteredPlans.length === 0 ? '<p class="empty-state">Bu kategoride paket bulunamadı.</p>' : '';
+    
     filteredPlans.forEach(plan => {
         const planElement = document.createElement('div');
         planElement.className = `plan-card ${plan.isCompleted ? 'completed' : ''}`;
@@ -174,12 +166,10 @@ async function loadSavedPlans(filterCategory = 'all') {
                 <button class="view-plan-btn">Düzenle</button>
             </div>
         `;
-        
         planElement.querySelector('.view-plan-btn').addEventListener('click', () => renderPlanForEditing(plan));
         if(plan.quiz) {
             planElement.querySelector('.quiz-plan-btn').addEventListener('click', () => renderPlanForEditing(plan, true));
         }
-        
         savedPlansContainer.appendChild(planElement);
     });
 }
@@ -192,15 +182,17 @@ async function handleQuizActions(e) {
 
         quizContent.innerHTML = '<div class="spinner"></div><p>AI, soruları hazırlıyor...</p>';
         try {
-            if (!(await puter.auth.isLoggedIn())) {
-                showToast("AI özelliğini kullanmak için Puter'a giriş yapmalısınız.", "info");
-                await puter.auth.login();
-            }
+            // DÜZELTME: Doğrudan AI fonksiyonunu çağır. Puter.js girişi otomatik yönetir.
             const quizData = await runQuizAiAnalysis(topic);
-            currentQuizData = quizData.quiz; // Sadece quiz array'ini al
+            currentQuizData = quizData.quiz;
             renderQuiz(currentQuizData);
         } catch (error) {
-            showToast("AI test oluşturamadı. Lütfen tekrar deneyin.", "error");
+            // Kullanıcı Puter giriş penceresini kapatırsa bu hata oluşur.
+            if (error && error.message.toLowerCase().includes('closed the popup')) {
+                showToast("AI özelliğini kullanmak için Puter girişini tamamlamalısınız.", "error");
+            } else {
+                showToast("AI test oluşturamadı. Lütfen tekrar deneyin.", "error");
+            }
             renderQuizGeneratorButton();
             console.error(error);
         }
@@ -234,7 +226,6 @@ function renderQuiz(quizData, reviewMode = false) {
     if (!reviewMode) {
         quizHTML += '<button id="submit-quiz-btn" class="primary-button">Testi Bitir</button>';
     }
-    
     quizContent.innerHTML = quizHTML;
     quizResultsContainer.innerHTML = '';
 }
@@ -246,13 +237,11 @@ function handleSubmitQuiz() {
         const selectedOption = questionDiv.querySelector(`input[name="q${index}"]:checked`);
         
         questionDiv.querySelectorAll('label').forEach(label => label.classList.remove('correct', 'incorrect'));
-
         if (selectedOption) {
             const selectedAnswer = parseInt(selectedOption.value);
             const correctAnswer = q.correctAnswer;
             const correctLabel = questionDiv.querySelector(`input[value="${correctAnswer}"]`).parentElement;
             correctLabel.classList.add('correct');
-
             if (selectedAnswer === correctAnswer) {
                 score++;
             } else {
@@ -261,7 +250,6 @@ function handleSubmitQuiz() {
         }
         questionDiv.querySelectorAll('input').forEach(input => input.disabled = true);
     });
-
     quizResultsContainer.innerHTML = `<h3>Sonuç: ${currentQuizData.length} soruda ${score} doğru!</h3>`;
     document.getElementById('submit-quiz-btn').style.display = 'none';
 }
@@ -309,17 +297,15 @@ function renderPlanForEditing(plan, startWithQuiz = false) {
     if (plan.learningPlan?.forEach) {
         plan.learningPlan.forEach(step => addChecklistStep(step.text, step.completed));
     }
-    
     keyConceptsInput.value = plan.keyConcepts || '';
     
     if (plan.quiz) {
         currentQuizData = plan.quiz;
         renderQuiz(plan.quiz, startWithQuiz);
-        if (startWithQuiz) handleSubmitQuiz(); // Simüle edilmiş, sadece cevapları gösterir
+        if (startWithQuiz) handleSubmitQuiz();
     } else {
         renderQuizGeneratorButton();
     }
-    
     resultsContainer.classList.remove('hidden');
     handleNavClick(document.querySelector('.nav-link[data-view="generator-view"]'));
 }
