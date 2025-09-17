@@ -293,7 +293,6 @@ async function fetchBestVideo(query) {
     let searchQuery = query;
     if (query.toLowerCase().includes('matematik')) {
         searchQuery = query + " Rehber Matematik";
-        showToast("Matematik konusu için Rehber Matematik kanalında arama yapılıyor...");
     }
     const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(searchQuery)}&maxResults=1&type=video&key=${YOUTUBE_API_KEY}`;
     const response = await fetch(url);
