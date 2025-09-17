@@ -83,6 +83,14 @@ async function handleFetchRequest() {
     statusIndicator.style.display = 'block';
 
     try {
+        // YENİ: Puter.js kimlik doğrulaması kontrolü
+        // AI özelliğini kullanmadan önce kullanıcının Puter'a giriş yaptığından emin ol.
+        updateStatus("AI servisi için kimlik kontrolü yapılıyor...");
+        if (!(await puter.auth.isLoggedIn())) {
+            alert("AI özelliğini kullanmak için Puter.com hesabınızla giriş yapmanız gerekmektedir. Şimdi bir pencere açılacaktır.");
+            await puter.auth.login();
+        }
+
         updateStatus("AI, öğrenme stratejini hazırlıyor...");
         const aiResponse = await runAiAnalysis(userQuery);
 
@@ -106,7 +114,13 @@ async function handleFetchRequest() {
 
     } catch (error) {
         statusIndicator.style.display = 'none';
-        alert("Bir hata oluştu: " + error.message);
+        // Puter.auth.login() penceresi kullanıcı tarafından kapatılırsa bir hata fırlatır.
+        // Bu hatayı yakalayıp kullanıcıya daha anlamlı bir mesaj gösterelim.
+        if (error.message.includes("The user closed the popup")) {
+             alert("AI özelliğini kullanabilmek için Puter giriş işlemini tamamlamanız gerekmektedir.");
+        } else {
+             alert("Bir hata oluştu: " + error.message);
+        }
         console.error(error);
     }
 }
@@ -172,26 +186,23 @@ async function loadSavedPlans() {
     });
 }
 
-// ----- YENİ: PUTER.JS İLE AI ETKİLEŞİMİ -----
+// ----- PUTER.JS İLE AI ETKİLEŞİMİ -----
 async function runAiAnalysis(userQuery) {
     const prompt = `Bir Türk lise öğrencisi için uzman bir öğrenme asistanı olarak hareket et. Kullanıcının öğrenmek istediği konu: "${userQuery}". Bana aşağıdaki formatta, başka hiçbir ek metin olmadan, geçerli bir JSON nesnesi döndür: { "youtubeSearchQueries": ["..."], "keyConcepts": ["..."], "learningPlan": ["..."], "openQuestions": ["..."] }`;
 
     try {
         console.log("Puter.js AI servisi çağrılıyor...");
-        // Puter.js'in `ai.chat` metodunu kullanarak AI'dan yanıt alıyoruz.
-        // GPT-4o gibi daha güçlü bir model kullanarak daha kaliteli sonuçlar elde ediyoruz.
         const result = await puter.ai.chat([{
             role: 'user',
             content: prompt
         }], { model: 'gpt-4o' });
 
         const rawJson = result.message.content;
-        // AI'ın başına veya sonuna ekleyebileceği markdown formatını temizliyoruz.
         return JSON.parse(rawJson.replace(/```json/g, '').replace(/```/g, ''));
 
     } catch (error) {
         console.error("Puter.js AI servisinde hata:", error);
-        throw new Error("AI analizi sırasında bir hata oluştu. Lütfen Puter.js entegrasyonunu kontrol edin veya daha sonra tekrar deneyin.");
+        throw new Error("AI analizi sırasında bir hata oluştu. Lütfen daha sonra tekrar deneyin.");
     }
 }
 
