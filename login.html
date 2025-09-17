@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NexusLearn AI - Giriş Yap</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="login-container">
+            <header class="ai-header">
+                <h1>NexusLearn AI</h1>
+                <p>Öğrenme potansiyelini ortaya çıkar.</p>
+            </header>
+
+            <div class="login-box">
+                <input type="email" id="email" placeholder="E-posta Adresi" required>
+                <input type="password" id="password" placeholder="Şifre" required>
+                <button id="login-button">Giriş Yap</button>
+                <button id="signup-button">Kayıt Ol</button>
+                <p class="error-message" id="error-message"></p>
+                <div class="separator">veya</div>
+                <button id="google-signin-button">
+                    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google logo">
+                    Google ile Giriş Yap
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
+    
+    <script src="firebase-config.js"></script>
+    <script src="auth.js"></script>
+</body>
+</html>

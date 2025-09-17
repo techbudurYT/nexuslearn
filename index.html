@@ -3,50 +3,85 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NexusLearn AI v5.0 - The Phoenix</title>
+    <title>NexusLearn AI - Kontrol Paneli</title>
     <link rel="stylesheet" href="style.css">
 </head>
-<body>
+<body style="display: none;"> <!-- Sayfa başlangıçta gizli -->
     <div class="container">
-        <header class="ai-header">
-            <h1>NexusLearn AI</h1>
-            <p>Öğrenmek istediğin dersi ve konuyu yaz, gerisini bana bırak.</p>
-        </header>
-
-        <div class="search-wrapper">
-            <input type="text" id="topic-input" placeholder="Örn: Fizik, Newton'un Hareket Yasaları...">
-            <button id="fetch-button">Öğrenme Paketini Oluştur</button>
+        <!-- ===== KONTROL PANELİ GÖRÜNÜMÜ ===== -->
+        <div id="dashboard-view">
+            <header class="dashboard-header">
+                <h1>NexusLearn AI</h1>
+                <div>
+                    <span id="user-display-name">Yükleniyor...</span>
+                    <button id="logout-button" class="secondary-button">Çıkış Yap</button>
+                </div>
+            </header>
+            <main>
+                <div class="dashboard-actions">
+                    <h2>Öğrenme Paketlerim</h2>
+                    <button id="new-plan-button">Yeni Paket Oluştur</button>
+                </div>
+                <div id="saved-plans-container">
+                    <!-- Kayıtlı planlar buraya yüklenecek -->
+                </div>
+            </main>
         </div>
 
-        <div id="status-indicator" style="display: none;">
-            <div class="spinner"></div>
-            <p id="status-text">Analiz başlatılıyor...</p>
-        </div>
+        <!-- ===== OLUŞTURUCU GÖRÜNÜMÜ ===== -->
+        <div id="generator-view" class="hidden">
+            <header class="ai-header">
+                <h1>Yeni Öğrenme Paketi</h1>
+                <p>Öğrenmek istediğin dersi ve konuyu yaz, gerisini bana bırak.</p>
+            </header>
 
-        <main id="results-container" class="hidden">
-            <section class="result-widget" id="learning-plan-widget">
-                <h2>Senin İçin Hazırlanan Öğrenme Planı</h2>
-                <div id="learning-plan-container"></div>
-            </section>
+            <div class="search-wrapper">
+                <input type="text" id="topic-input" placeholder="Örn: Biyoloji, Mitoz Bölünme...">
+                <button id="fetch-button">Öğrenme Paketini Oluştur</button>
+            </div>
+            <button id="back-to-dashboard-button" class="secondary-button back-button">Panele Geri Dön</button>
             
-            <section class="result-widget" id="video-widget">
-                <h2>Önerilen Konu Anlatım Videosu</h2>
-                <div id="video-container"></div>
-            </section>
+            <div id="status-indicator" style="display: none;">
+                <div class="spinner"></div>
+                <p id="status-text">Analiz başlatılıyor...</p>
+            </div>
 
-            <section class="result-widget" id="key-concepts-widget">
-                <h2>Konunun Anahtar Kavramları</h2>
-                <div id="key-concepts-container"></div>
-            </section>
+            <main id="results-container" class="hidden">
+                <section class="result-widget" id="learning-plan-widget">
+                    <h2>Senin İçin Hazırlanan Öğrenme Planı</h2>
+                    <div id="learning-plan-container"></div>
+                </section>
+                
+                <section class="result-widget" id="video-widget">
+                    <h2>Önerilen Konu Anlatım Videosu</h2>
+                    <div id="video-container"></div>
+                </section>
 
-            <section class="result-widget" id="open-questions-widget">
-                <h2>Kritik Düşünme Soruları</h2>
-                <div id="open-questions-container"></div>
-            </section>
-        </main>
+                <section class="result-widget" id="key-concepts-widget">
+                    <h2>Konunun Anahtar Kavramları</h2>
+                    <div id="key-concepts-container"></div>
+                </section>
+
+                <section class="result-widget" id="open-questions-widget">
+                    <h2>Kritik Düşünme Soruları</h2>
+                    <div id="open-questions-container"></div>
+                </section>
+
+                <div class="result-actions">
+                     <button id="save-plan-button" class="hidden">Planı Kaydet ve Panele Dön</button>
+                </div>
+            </main>
+        </div>
     </div>
     
-    <script src="config.js"></script>
-    <script src="script.js"></script>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore-compat.js"></script>
+
+    <!-- App Scripts -->
+    <script src="firebase-config.js"></script>
+    <script src="config.js"></script> <!-- YOUTUBE_API_KEY için -->
+    <script src="app.js"></script>
 </body>
 </html>
