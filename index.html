@@ -7,6 +7,8 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body style="display: none;"> <!-- Sayfa başlangıçta gizli -->
+    <div id="toast-container"></div> <!-- Modern bildirimler için -->
+
     <div class="container">
         <!-- ===== KONTROL PANELİ GÖRÜNÜMÜ ===== -->
         <div id="dashboard-view">
@@ -19,8 +21,18 @@
                 </div>
             </header>
             <main>
+                <div id="stats-widget" class="result-widget">
+                    <!-- İstatistikler buraya yüklenecek -->
+                </div>
+
                 <div class="dashboard-actions">
                     <h2>Öğrenme Paketlerim</h2>
+                    <div class="filter-wrapper">
+                        <span>Kategoriye göre filtrele:</span>
+                        <select id="category-filter">
+                            <option value="all">Tümü</option>
+                        </select>
+                    </div>
                     <button id="new-plan-button">Yeni Paket Oluştur</button>
                 </div>
                 <div id="saved-plans-container">
@@ -35,9 +47,12 @@
                 <h1>Yeni Öğrenme Paketi</h1>
                 <p>Konu başlığını yazarak video bul ve kendi öğrenme notlarını oluştur.</p>
             </header>
-
-            <div class="search-wrapper">
-                <input type="text" id="topic-input" placeholder="Örn: Biyoloji, Mitoz Bölünme...">
+            
+            <div class="form-grid">
+                <div class="search-wrapper">
+                    <input type="text" id="topic-input" placeholder="Örn: Biyoloji, Mitoz Bölünme...">
+                    <input type="text" id="category-input" placeholder="Kategori (Örn: Biyoloji)">
+                </div>
                 <button id="fetch-button">Video Bul ve Planı Hazırla</button>
             </div>
             <button id="back-to-dashboard-button" class="secondary-button back-button">Panele Geri Dön</button>
@@ -55,7 +70,13 @@
 
                 <section class="result-widget">
                     <h2>Öğrenme Planı (Adımlar)</h2>
-                    <textarea id="learning-plan-input" placeholder="Bu konuyu öğrenmek için izleyeceğin adımları listele..."></textarea>
+                    <div id="learning-plan-checklist">
+                        <!-- Dinamik adımlar buraya eklenecek -->
+                    </div>
+                    <div class="add-step-wrapper">
+                        <input type="text" id="new-step-input" placeholder="Yeni bir adım ekle...">
+                        <button id="add-step-button">+</button>
+                    </div>
                 </section>
                 
                 <section class="result-widget">

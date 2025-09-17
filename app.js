@@ -2,6 +2,7 @@
 const userDisplayName = document.getElementById('user-display-name');
 const logoutButton = document.getElementById('logout-button');
 const profileButton = document.getElementById('profile-button');
+const toastContainer = document.getElementById('toast-container');
 
 // Görünümler (Views)
 const dashboardView = document.getElementById('dashboard-view');
@@ -9,17 +10,22 @@ const generatorView = document.getElementById('generator-view');
 const profileView = document.getElementById('profile-view');
 
 // Dashboard Elementleri
+const statsWidget = document.getElementById('stats-widget');
+const categoryFilter = document.getElementById('category-filter');
 const newPlanButton = document.getElementById('new-plan-button');
 const savedPlansContainer = document.getElementById('saved-plans-container');
 
 // Oluşturucu Elementleri
 const topicInput = document.getElementById('topic-input');
+const categoryInput = document.getElementById('category-input');
 const fetchButton = document.getElementById('fetch-button');
 const statusIndicator = document.getElementById('status-indicator');
 const statusText = document.getElementById('status-text');
 const resultsContainer = document.getElementById('results-container');
 const videoContainer = document.getElementById('video-container');
-const learningPlanInput = document.getElementById('learning-plan-input');
+const learningPlanChecklist = document.getElementById('learning-plan-checklist');
+const newStepInput = document.getElementById('new-step-input');
+const addStepButton = document.getElementById('add-step-button');
 const keyConceptsInput = document.getElementById('key-concepts-input');
 const openQuestionsInput = document.getElementById('open-questions-input');
 const backToDashboardButton = document.getElementById('back-to-dashboard-button');
@@ -34,12 +40,12 @@ const confirmPasswordInput = document.getElementById('confirm-password-input');
 const updatePasswordButton = document.getElementById('update-password-button');
 const deleteAccountButton = document.getElementById('delete-account-button');
 
-
 // ----- FIREBASE REFERANSLARI -----
 const auth = firebase.auth();
 const db = firebase.firestore();
 let currentUser;
-let currentVideoId = null; // Sadece bulunan videonun ID'sini tutar
+let currentVideoId = null;
+let currentPlanId = null; // Düzenleme modunda plan ID'sini tutar
 
 // ----- UYGULAMA BAŞLANGICI -----
 auth.onAuthStateChanged(user => {
@@ -56,7 +62,7 @@ function setupUI(user) {
     const name = user.displayName || user.email.split('@')[0];
     userDisplayName.textContent = `Hoş Geldin, ${name}`;
     displayNameInput.value = user.displayName || '';
-    document.body.style.display = 'block'; // Sayfayı göster
+    document.body.style.display = 'block';
 }
 
 function showView(view) {
@@ -68,12 +74,18 @@ function showView(view) {
 
 // ----- EVENT LISTENERS -----
 logoutButton.addEventListener('click', async () => await auth.signOut());
-newPlanButton.addEventListener('click', () => showView(generatorView));
+newPlanButton.addEventListener('click', () => {
+    currentPlanId = null; // Yeni plan moduna geç
+    clearGeneratorForm();
+    showView(generatorView);
+});
 profileButton.addEventListener('click', () => showView(profileView));
 fetchButton.addEventListener('click', handleFetchRequest);
 backToDashboardButton.addEventListener('click', () => showView(dashboardView));
 backToDashboardFromProfile.addEventListener('click', () => showView(dashboardView));
 savePlanButton.addEventListener('click', saveCurrentPlan);
+addStepButton.addEventListener('click', addChecklistStep);
+categoryFilter.addEventListener('change', () => loadSavedPlans(categoryFilter.value));
 updateDisplayNameButton.addEventListener('click', handleUpdateDisplayName);
 updatePasswordButton.addEventListener('click', handleUpdatePassword);
 deleteAccountButton.addEventListener('click', handleDeleteAccount);
@@ -81,13 +93,9 @@ deleteAccountButton.addEventListener('click', handleDeleteAccount);
 // ----- ANA FONKSİYONLAR -----
 async function handleFetchRequest() {
     const userQuery = topicInput.value.trim();
-    if (!userQuery) {
-        alert("Lütfen bir konu başlığı girin.");
-        return;
-    }
+    if (!userQuery) return showToast("Lütfen bir konu başlığı girin.", "error");
     if (typeof YOUTUBE_API_KEY === 'undefined' || YOUTUBE_API_KEY === 'SENİN_YOUTUBE_API_ANAHTARIN') {
-        alert("Hata: config.js dosyasında geçerli bir YOUTUBE_API_KEY bulunamadı.");
-        return;
+        return showToast("Hata: Geçerli bir YouTube API anahtarı bulunamadı.", "error");
     }
 
     resultsContainer.classList.add('hidden');
@@ -97,105 +105,201 @@ async function handleFetchRequest() {
     try {
         const videoId = await fetchBestVideo(userQuery);
         currentVideoId = videoId;
-        renderVideoAndInputs(videoId);
-
-        statusIndicator.style.display = 'none';
+        videoContainer.innerHTML = `<iframe src="https://www.youtube.com/embed/${videoId}" frameborder="0" allowfullscreen></iframe>`;
         resultsContainer.classList.remove('hidden');
     } catch (error) {
+        showToast(error.message, "error");
+    } finally {
         statusIndicator.style.display = 'none';
-        alert("Bir hata oluştu: " + error.message);
-        console.error(error);
     }
 }
 
 async function saveCurrentPlan() {
     if (!currentUser || !currentVideoId) {
-        alert("Kaydedilecek bir video veya plan bulunamadı.");
-        return;
+        return showToast("Kaydedilecek bir video veya plan bulunamadı.", "error");
     }
 
     const planData = {
         topic: topicInput.value.trim(),
+        category: categoryInput.value.trim() || 'Genel',
         videoId: currentVideoId,
-        learningPlan: learningPlanInput.value.trim(),
+        learningPlan: getChecklistData(),
         keyConcepts: keyConceptsInput.value.trim(),
         openQuestions: openQuestionsInput.value.trim(),
-        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        isCompleted: false, // Varsayılan olarak tamamlanmadı
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     };
-
-    if (!planData.topic) {
-        alert("Lütfen bir konu başlığı girin.");
-        return;
-    }
+    
+    if (!planData.topic) return showToast("Konu başlığı boş olamaz.", "error");
 
     try {
         savePlanButton.disabled = true;
         savePlanButton.textContent = "Kaydediliyor...";
-        await db.collection('users').doc(currentUser.uid).collection('plans').add(planData);
-        alert(`"${planData.topic}" konulu plan başarıyla kaydedildi!`);
         
-        // Formu temizle ve panele dön
-        topicInput.value = '';
-        resultsContainer.classList.add('hidden');
+        const planRef = db.collection('users').doc(currentUser.uid).collection('plans');
+
+        if (currentPlanId) { // Düzenleme modu
+            await planRef.doc(currentPlanId).update(planData);
+            showToast(`"${planData.topic}" planı başarıyla güncellendi!`);
+        } else { // Yeni plan modu
+            planData.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+            await planRef.add(planData);
+            showToast(`"${planData.topic}" planı başarıyla kaydedildi!`);
+        }
+        
+        clearGeneratorForm();
         loadSavedPlans();
         showView(dashboardView);
 
     } catch (error) {
+        showToast("Plan kaydedilirken bir hata oluştu.", "error");
         console.error("Plan kaydetme hatası: ", error);
-        alert("Plan kaydedilirken bir hata oluştu.");
     } finally {
         savePlanButton.disabled = false;
         savePlanButton.textContent = "Planı Kaydet";
     }
 }
 
-async function loadSavedPlans() {
+async function loadSavedPlans(filterCategory = 'all') {
     if (!currentUser) return;
     savedPlansContainer.innerHTML = '<div class="spinner"></div>';
     
     const snapshot = await db.collection('users').doc(currentUser.uid).collection('plans').orderBy('createdAt', 'desc').get();
     
     if (snapshot.empty) {
-        savedPlansContainer.innerHTML = '<p>Henüz kaydedilmiş bir öğrenme paketiniz yok.</p>';
+        statsWidget.innerHTML = '<h3>İstatistikler</h3><p>Henüz hiç öğrenme paketi oluşturmadınız.</p>';
+        savedPlansContainer.innerHTML = '';
         return;
     }
 
+    const allPlans = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    
+    updateStatsAndCategories(allPlans);
+
+    const filteredPlans = filterCategory === 'all' 
+        ? allPlans 
+        : allPlans.filter(plan => plan.category === filterCategory);
+
     savedPlansContainer.innerHTML = '';
-    snapshot.forEach(doc => {
-        const plan = doc.data();
+    if (filteredPlans.length === 0) {
+        savedPlansContainer.innerHTML = '<p>Bu kategoride kaydedilmiş bir paket bulunamadı.</p>';
+        return;
+    }
+
+    filteredPlans.forEach(plan => {
         const planElement = document.createElement('div');
-        planElement.className = 'saved-plan-card';
+        planElement.className = `saved-plan-card ${plan.isCompleted ? 'completed' : ''}`;
         planElement.innerHTML = `
             <div>
+                <span class="plan-category">${plan.category}</span>
                 <h3>${plan.topic}</h3>
                 <p>Oluşturulma: ${plan.createdAt ? new Date(plan.createdAt.seconds * 1000).toLocaleDateString('tr-TR') : 'Bilinmiyor'}</p>
             </div>
-            <div>
-                <button class="view-plan-btn">Görüntüle</button>
+            <div class="plan-actions">
+                <button class="toggle-complete-btn">${plan.isCompleted ? 'Geri Al' : 'Tamamlandı İşaretle'}</button>
+                <button class="view-plan-btn">Düzenle</button>
                 <button class="delete-plan-btn danger-button">Sil</button>
             </div>
         `;
         
         planElement.querySelector('.view-plan-btn').addEventListener('click', () => {
-            topicInput.value = plan.topic;
-            renderVideoAndInputs(plan.videoId, plan);
-            resultsContainer.classList.remove('hidden');
-            showView(generatorView);
+            renderPlanForEditing(plan);
         });
-
+        planElement.querySelector('.toggle-complete-btn').addEventListener('click', async () => {
+            await db.collection('users').doc(currentUser.uid).collection('plans').doc(plan.id).update({ isCompleted: !plan.isCompleted });
+            loadSavedPlans(categoryFilter.value);
+        });
         planElement.querySelector('.delete-plan-btn').addEventListener('click', async (e) => {
             e.stopPropagation();
             if (confirm(`"${plan.topic}" planını silmek istediğinizden emin misiniz?`)) {
-                await db.collection('users').doc(currentUser.uid).collection('plans').doc(doc.id).delete();
-                loadSavedPlans(); // Listeyi yenile
+                await db.collection('users').doc(currentUser.uid).collection('plans').doc(plan.id).delete();
+                loadSavedPlans(categoryFilter.value);
+                showToast("Plan başarıyla silindi.");
             }
         });
-
         savedPlansContainer.appendChild(planElement);
     });
 }
 
-// ----- YOUTUBE ETKİLEŞİMİ -----
+// ----- YARDIMCI FONKSİYONLAR -----
+function updateStatsAndCategories(allPlans) {
+    const totalPlans = allPlans.length;
+    const completedPlans = allPlans.filter(p => p.isCompleted).length;
+    statsWidget.innerHTML = `<h3>İstatistikler</h3><p><strong>${totalPlans}</strong> Toplam Paket</p><p><strong>${completedPlans}</strong> Tamamlanan Paket</p>`;
+
+    const categories = [...new Set(allPlans.map(p => p.category).filter(Boolean))];
+    const currentFilter = categoryFilter.value;
+    categoryFilter.innerHTML = '<option value="all">Tümü</option>';
+    categories.forEach(cat => {
+        const option = document.createElement('option');
+        option.value = cat;
+        option.textContent = cat;
+        categoryFilter.appendChild(option);
+    });
+    categoryFilter.value = currentFilter;
+}
+
+function addChecklistStep(text = '') {
+    const stepText = (typeof text === 'string' ? text : newStepInput.value).trim();
+    if (!stepText) return;
+
+    const li = document.createElement('li');
+    li.innerHTML = `
+        <input type="checkbox">
+        <span contenteditable="true">${stepText}</span>
+        <button class="delete-step-btn">&times;</button>
+    `;
+    li.querySelector('.delete-step-btn').addEventListener('click', () => li.remove());
+    learningPlanChecklist.appendChild(li);
+    if (typeof text !== 'string') newStepInput.value = '';
+}
+
+function getChecklistData() {
+    const items = [];
+    learningPlanChecklist.querySelectorAll('li').forEach(li => {
+        items.push({
+            text: li.querySelector('span').textContent,
+            completed: li.querySelector('input').checked
+        });
+    });
+    return items;
+}
+
+function renderPlanForEditing(plan) {
+    currentPlanId = plan.id;
+    currentVideoId = plan.videoId;
+    topicInput.value = plan.topic;
+    categoryInput.value = plan.category;
+    videoContainer.innerHTML = `<iframe src="https://www.youtube.com/embed/${plan.videoId}" frameborder="0" allowfullscreen></iframe>`;
+    
+    learningPlanChecklist.innerHTML = '';
+    if (plan.learningPlan && plan.learningPlan.forEach) {
+        plan.learningPlan.forEach(step => {
+            addChecklistStep(step.text);
+            if (step.completed) {
+                learningPlanChecklist.lastChild.querySelector('input').checked = true;
+            }
+        });
+    }
+    
+    keyConceptsInput.value = plan.keyConcepts || '';
+    openQuestionsInput.value = plan.openQuestions || '';
+    
+    resultsContainer.classList.remove('hidden');
+    showView(generatorView);
+}
+
+function clearGeneratorForm() {
+    topicInput.value = '';
+    categoryInput.value = '';
+    resultsContainer.classList.add('hidden');
+    learningPlanChecklist.innerHTML = '';
+    keyConceptsInput.value = '';
+    openQuestionsInput.value = '';
+    currentPlanId = null;
+    currentVideoId = null;
+}
+
 async function fetchBestVideo(query) {
     const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query)}&maxResults=1&type=video&key=${YOUTUBE_API_KEY}`;
     const response = await fetch(url);
@@ -205,68 +309,60 @@ async function fetchBestVideo(query) {
     return data.items[0].id.videoId;
 }
 
+function showToast(message, type = 'success') {
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.textContent = message;
+    toastContainer.appendChild(toast);
+    setTimeout(() => {
+        toast.classList.add('show');
+        setTimeout(() => {
+            toast.classList.remove('show');
+            setTimeout(() => toast.remove(), 500);
+        }, 3000);
+    }, 100);
+}
+
 // ----- PROFİL YÖNETİMİ -----
 async function handleUpdateDisplayName() {
     const newName = displayNameInput.value.trim();
-    if (!newName) {
-        alert("Görünen ad boş olamaz.");
-        return;
-    }
+    if (!newName) return showToast("Görünen ad boş olamaz.", "error");
     try {
         await currentUser.updateProfile({ displayName: newName });
-        setupUI(currentUser); // Header'ı güncelle
-        alert("Görünen ad başarıyla güncellendi.");
+        setupUI(currentUser);
+        showToast("Görünen ad başarıyla güncellendi.");
     } catch (error) {
-        alert("İsim güncellenirken bir hata oluştu: " + error.message);
+        showToast("İsim güncellenirken bir hata oluştu.", "error");
     }
 }
 
 async function handleUpdatePassword() {
     const newPassword = newPasswordInput.value;
-    const confirmPassword = confirmPasswordInput.value;
-
-    if (newPassword.length < 6) {
-        alert("Yeni şifre en az 6 karakter olmalıdır.");
-        return;
-    }
-    if (newPassword !== confirmPassword) {
-        alert("Şifreler uyuşmuyor.");
-        return;
-    }
+    if (newPassword.length < 6) return showToast("Yeni şifre en az 6 karakter olmalıdır.", "error");
+    if (newPassword !== confirmPasswordInput.value) return showToast("Şifreler uyuşmuyor.", "error");
 
     try {
         await currentUser.updatePassword(newPassword);
         newPasswordInput.value = '';
         confirmPasswordInput.value = '';
-        alert("Şifreniz başarıyla güncellendi.");
+        showToast("Şifreniz başarıyla güncellendi.");
     } catch (error) {
-        alert("Şifre güncellenirken bir hata oluştu. Bu işlem için yakın zamanda tekrar giriş yapmanız gerekebilir.\n\n" + error.message);
+        showToast("Şifre güncellenemedi. Tekrar giriş yapmanız gerekebilir.", "error");
     }
 }
 
 async function handleDeleteAccount() {
-    const confirmation = prompt("Hesabınızı silmek istediğinizden emin misiniz? Bu işlem geri alınamaz. Onaylamak için 'SİL' yazın.");
+    const confirmation = prompt("Hesabınızı silmek için 'SİL' yazın.");
     if (confirmation === 'SİL') {
         try {
-            // Firestore'daki kullanıcı verilerini silmek daha kapsamlı bir çözüm gerektirir (Cloud Function en iyisidir).
-            // Şimdilik sadece Auth kaydını siliyoruz.
             await currentUser.delete();
-            alert("Hesabınız kalıcı olarak silindi.");
-            // onAuthStateChanged kullanıcıyı login sayfasına yönlendirecektir.
+            showToast("Hesabınız kalıcı olarak silindi.", "success");
         } catch (error) {
-            alert("Hesap silinirken bir hata oluştu. Bu işlem için yakın zamanda tekrar giriş yapmanız gerekebilir.\n\n" + error.message);
+            showToast("Hesap silinemedi. Tekrar giriş yapmanız gerekebilir.", "error");
         }
     } else {
-        alert("Onay metni yanlış olduğu için işlem iptal edildi.");
+        showToast("Onay metni yanlış, işlem iptal edildi.", "error");
     }
-}
-
-// ----- ARAYÜZ GÜNCELLEME -----
-function renderVideoAndInputs(videoId, plan = {}) {
-    videoContainer.innerHTML = `<iframe src="https://www.youtube.com/embed/${videoId}" frameborder="0" allowfullscreen></iframe>`;
-    learningPlanInput.value = plan.learningPlan || '';
-    keyConceptsInput.value = plan.keyConcepts || '';
-    openQuestionsInput.value = plan.openQuestions || '';
 }
 
 function updateStatus(message) {
