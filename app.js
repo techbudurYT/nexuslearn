@@ -5,10 +5,13 @@ const views = document.querySelectorAll('.view');
 const userDisplayName = document.getElementById('user-display-name');
 
 // Dashboard
-const statsWidget = document.getElementById('stats-widget');
+const statsContainer = document.getElementById('stats-container');
+const gpDisplay = document.getElementById('gp-display');
+const badgeContainer = document.getElementById('badge-container');
 const categoryFilter = document.getElementById('category-filter');
 const savedPlansContainer = document.getElementById('saved-plans-container');
-const categoryChartCanvas = document.getElementById('categoryChart');
+const masteryChartCanvas = document.getElementById('masteryChart');
+const todaysReviewsContainer = document.getElementById('todays-reviews-container');
 
 // Generator
 const topicInput = document.getElementById('topic-input');
@@ -16,17 +19,14 @@ const categoryInput = document.getElementById('category-input');
 const fetchButton = document.getElementById('fetch-button');
 const statusIndicator = document.getElementById('status-indicator');
 const statusText = document.getElementById('status-text');
-const resultsContainer = document.getElementById('results-container');
-const videoContainer = document.getElementById('video-container');
-const learningPlanChecklist = document.getElementById('learning-plan-checklist');
-const newStepInput = document.getElementById('new-step-input');
-const addStepButton = document.getElementById('add-step-button');
-const keyConceptsInput = document.getElementById('key-concepts-input');
-const savePlanButton = document.getElementById('save-plan-button');
-
-// Quiz
+const pathwayContainer = document.getElementById('pathway-container');
+const prerequisitesContainer = document.getElementById('prerequisites-container');
+const learningPathComponent = document.getElementById('learning-path-container');
+const preTestContainer = document.getElementById('pre-test-container');
+const remediationContainer = document.getElementById('remediation-container');
 const quizContent = document.getElementById('quiz-content');
 const quizResultsContainer = document.getElementById('quiz-results-container');
+const savePlanButton = document.getElementById('save-plan-button');
 
 // Profil & Diğerleri
 const displayNameInput = document.getElementById('display-name-input');
@@ -42,15 +42,24 @@ const logoutButton = document.getElementById('logout-button');
 // ----- UYGULAMA STATE'İ -----
 const auth = firebase.auth();
 const db = firebase.firestore();
-let currentUser, currentPlanId, currentVideoId, categoryChart, currentQuizData = null;
+let currentUser, currentPlanId, currentPathwayData = null;
+let masteryChart;
 let pomoInterval, pomoMinutes = 25, pomoSeconds = 0, isPomoPaused = true;
+
+const BADGE_DEFINITIONS = {
+    newbie: { icon: 'fas fa-baby', title: 'İlk Adım' },
+    diligent: { icon: 'fas fa-pencil-alt', title: '5 Patika Tamamlandı' },
+    master: { icon: 'fas fa-brain', title: 'Bir Konuda %100 Ustalık' },
+    perfect: { icon: 'fas fa-bullseye', title: 'İlk %100 Test Sonucu' },
+    focused: { icon: 'fas fa-stopwatch', title: '10 Pomodoro Seansı' },
+};
 
 // ----- UYGULAMA BAŞLANGICI -----
 auth.onAuthStateChanged(user => {
     if (user) {
         currentUser = user;
         setupUI(user);
-        loadSavedPlans();
+        loadDashboardData();
         setupEventListeners();
     } else {
         window.location.href = 'login.html';
@@ -65,10 +74,9 @@ function setupUI(user) {
 
 function setupEventListeners() {
     navLinks.forEach(link => link.addEventListener('click', (e) => handleNavClick(e.currentTarget)));
-    fetchButton.addEventListener('click', handleFetchRequest);
+    fetchButton.addEventListener('click', generateLearningPathway);
     savePlanButton.addEventListener('click', saveCurrentPlan);
-    addStepButton.addEventListener('click', () => addChecklistStep());
-    categoryFilter.addEventListener('change', () => loadSavedPlans(categoryFilter.value));
+    categoryFilter.addEventListener('change', () => loadDashboardData(categoryFilter.value));
     updateDisplayNameButton.addEventListener('click', handleUpdateDisplayName);
     updatePasswordButton.addEventListener('click', handleUpdatePassword);
     deleteAccountButton.addEventListener('click', handleDeleteAccount);
@@ -79,37 +87,52 @@ function setupEventListeners() {
 }
 
 // ----- ANA FONKSİYONLAR -----
-async function handleFetchRequest() {
+async function generateLearningPathway() {
     const userQuery = topicInput.value.trim();
     if (!userQuery) return showToast("Lütfen bir konu başlığı girin.", "error");
 
-    resultsContainer.classList.add('hidden');
+    pathwayContainer.classList.add('hidden');
     statusIndicator.style.display = 'block';
-    updateStatus("Video aranıyor...");
+    fetchButton.disabled = true;
 
     try {
-        const videoData = await fetchBestVideo(userQuery);
-        currentVideoId = videoData.id;
-        videoContainer.innerHTML = `<iframe src="https://www.youtube.com/embed/${videoData.id}" frameborder="0" allowfullscreen></iframe>`;
-        resultsContainer.classList.remove('hidden');
-        renderQuizGeneratorButton();
+        updateStatus("AI, ön koşul analizi yapıyor...");
+        const prompt = `Bir Türk lise öğrencisinin "${userQuery}" konusunu sıfırdan en verimli şekilde öğrenmesi için bir "Gelişim Patikası" oluştur. Cevabın SADECE ve SADECE aşağıdaki formatta, başka hiçbir metin olmadan geçerli bir JSON nesnesi olsun:
+        {
+          "prerequisites": ["...", "..."],
+          "microLessons": [
+            { "id": "ders_1", "title": "...", "youtubeSearchQuery": "...", "memoryTechnique": "..." },
+            { "id": "ders_2", "title": "...", "youtubeSearchQuery": "...", "memoryTechnique": "..." }
+          ],
+          "preTest": [
+            { "lessonId": "ders_1", "question": "...", "options": ["...", "...", "...", "..."], "correctAnswer": 0_dan_başlayan_indeks }
+          ]
+        }`;
+        const result = await puter.ai.chat([{ role: 'user', content: prompt }], { model: 'gpt-4o' });
+        const rawJson = result.message.content.replace(/```json/g, '').replace(/```/g, '');
+        currentPathwayData = JSON.parse(rawJson);
+
+        updateStatus("Öğrenme materyalleri hazırlanıyor...");
+        renderLearningPathway(currentPathwayData);
+        pathwayContainer.classList.remove('hidden');
+
     } catch (error) {
-        showToast(error.message, "error");
+        showToast("AI Gelişim Patikası oluşturamadı. Lütfen tekrar deneyin.", "error");
+        console.error(error);
     } finally {
         statusIndicator.style.display = 'none';
+        fetchButton.disabled = false;
     }
 }
 
 async function saveCurrentPlan() {
-    if (!currentUser || !currentVideoId) return showToast("Kaydedilecek bir video bulunamadı.", "error");
+    if (!currentUser || !currentPathwayData) return showToast("Kaydedilecek bir patika bulunamadı.", "error");
 
     const planData = {
         topic: topicInput.value.trim(),
         category: categoryInput.value.trim() || 'Genel',
-        videoId: currentVideoId,
-        learningPlan: getChecklistData(),
-        keyConcepts: keyConceptsInput.value.trim(),
-        quiz: currentQuizData,
+        pathway: currentPathwayData,
+        mastery: currentPathwayData.microLessons.reduce((acc, lesson) => ({ ...acc, [lesson.id]: 0 }), {}),
         isCompleted: false,
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     };
@@ -121,118 +144,49 @@ async function saveCurrentPlan() {
         const planRef = db.collection('users').doc(currentUser.uid).collection('plans');
         if (currentPlanId) {
             await planRef.doc(currentPlanId).update(planData);
-            showToast(`Plan güncellendi!`);
+            showToast(`Patika güncellendi!`);
         } else {
             planData.createdAt = firebase.firestore.FieldValue.serverTimestamp();
-            await planRef.add(planData);
-            showToast(`Plan kaydedildi!`);
+            const docRef = await planRef.add(planData);
+            currentPlanId = docRef.id;
+            showToast(`Patika kaydedildi!`);
         }
-        loadSavedPlans();
-        handleNavClick(document.querySelector('.nav-link[data-view="dashboard-view"]'));
+        await awardPoints(25, 'Yeni Patika Kaydedildi');
+        loadDashboardData();
     } catch (error) {
-        showToast("Plan kaydedilirken bir hata oluştu.", "error");
+        showToast("Patika kaydedilirken bir hata oluştu.", "error");
     } finally {
         savePlanButton.disabled = false;
     }
 }
 
-async function loadSavedPlans(filterCategory = 'all') {
+async function loadDashboardData(filterCategory = 'all') {
     if (!currentUser) return;
     savedPlansContainer.innerHTML = '<div class="spinner"></div>';
     
-    const snapshot = await db.collection('users').doc(currentUser.uid).collection('plans').orderBy('createdAt', 'desc').get();
-    
-    if (snapshot.empty) {
-        statsWidget.innerHTML = '<h3>İstatistikler</h3><p>Henüz paket oluşturulmadı.</p>';
-        savedPlansContainer.innerHTML = '';
-        if (categoryChart) categoryChart.destroy();
-        return;
-    }
+    const plansSnapshot = await db.collection('users').doc(currentUser.uid).collection('plans').orderBy('createdAt', 'desc').get();
+    const allPlans = plansSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-    const allPlans = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    updateStatsAndCategories(allPlans);
+    const userDoc = await db.collection('users').doc(currentUser.uid).get();
+    const userData = userDoc.data() || {};
 
-    const filteredPlans = filterCategory === 'all' ? allPlans : allPlans.filter(plan => plan.category === filterCategory);
-    savedPlansContainer.innerHTML = filteredPlans.length === 0 ? '<p class="empty-state">Bu kategoride paket bulunamadı.</p>' : '';
-    
-    filteredPlans.forEach(plan => {
-        const planElement = document.createElement('div');
-        planElement.className = `plan-card ${plan.isCompleted ? 'completed' : ''}`;
-        planElement.innerHTML = `
-            <span class="plan-category">${plan.category}</span>
-            <h4>${plan.topic}</h4>
-            <div class="plan-actions">
-                ${plan.quiz ? '<button class="quiz-plan-btn"><i class="fas fa-rocket"></i> Testi Çöz</button>' : ''}
-                <button class="view-plan-btn">Düzenle</button>
-            </div>
-        `;
-        planElement.querySelector('.view-plan-btn').addEventListener('click', () => renderPlanForEditing(plan));
-        if(plan.quiz) {
-            planElement.querySelector('.quiz-plan-btn').addEventListener('click', () => renderPlanForEditing(plan, true));
-        }
-        savedPlansContainer.appendChild(planElement);
-    });
+    renderDashboard(allPlans, userData, filterCategory);
+    renderSavedPlans(allPlans, filterCategory);
 }
 
 // ----- QUIZ FONKSİYONLARI -----
 async function handleQuizActions(e) {
-    if (e.target.id === 'generate-quiz-btn') {
-        const topic = topicInput.value.trim();
-        if (!topic) return showToast("Test oluşturmak için konu başlığı gereklidir.", "error");
-
-        quizContent.innerHTML = '<div class="spinner"></div><p>AI, soruları hazırlıyor...</p>';
-        try {
-            // DÜZELTME: Doğrudan AI fonksiyonunu çağır. Puter.js girişi otomatik yönetir.
-            const quizData = await runQuizAiAnalysis(topic);
-            currentQuizData = quizData.quiz;
-            renderQuiz(currentQuizData);
-        } catch (error) {
-            // Kullanıcı Puter giriş penceresini kapatırsa bu hata oluşur.
-            if (error && error.message.toLowerCase().includes('closed the popup')) {
-                showToast("AI özelliğini kullanmak için Puter girişini tamamlamalısınız.", "error");
-            } else {
-                showToast("AI test oluşturamadı. Lütfen tekrar deneyin.", "error");
-            }
-            renderQuizGeneratorButton();
-            console.error(error);
-        }
-    } else if (e.target.id === 'submit-quiz-btn') {
+    if (e.target.id === 'submit-quiz-btn') {
         handleSubmitQuiz();
     }
 }
 
-async function runQuizAiAnalysis(topic) {
-    const prompt = `Bir Türk lise öğrencisinin "${topic}" konusundaki bilgisini ölçmek için 5 soruluk çoktan seçmeli bir test hazırla. Sadece ve sadece aşağıdaki formatta geçerli bir JSON nesnesi döndür: {"quiz": [{"question": "Soru metni...", "options": ["Seçenek A", "Seçenek B", "Seçenek C", "Seçenek D"], "correctAnswer": doğru_seçeneğin_indeksi_0_dan_başlayarak}]}`;
-    const result = await puter.ai.chat([{ role: 'user', content: prompt }], { model: 'gpt-4o' });
-    const rawJson = result.message.content.replace(/```json/g, '').replace(/```/g, '');
-    return JSON.parse(rawJson);
-}
-
-function renderQuiz(quizData, reviewMode = false) {
-    let quizHTML = quizData.map((q, index) => `
-        <div class="quiz-question" id="question-${index}">
-            <p>${index + 1}. ${q.question}</p>
-            <div class="quiz-options">
-                ${q.options.map((opt, i) => `
-                    <label>
-                        <input type="radio" name="q${index}" value="${i}" ${reviewMode ? 'disabled' : ''}>
-                        <span>${opt}</span>
-                    </label>
-                `).join('')}
-            </div>
-        </div>
-    `).join('');
-    
-    if (!reviewMode) {
-        quizHTML += '<button id="submit-quiz-btn" class="primary-button">Testi Bitir</button>';
-    }
-    quizContent.innerHTML = quizHTML;
-    quizResultsContainer.innerHTML = '';
-}
-
-function handleSubmitQuiz() {
+async function handleSubmitQuiz() {
     let score = 0;
-    currentQuizData.forEach((q, index) => {
+    const incorrectLessons = new Set();
+    const testData = currentPathwayData.preTest;
+
+    testData.forEach((q, index) => {
         const questionDiv = document.getElementById(`question-${index}`);
         const selectedOption = questionDiv.querySelector(`input[name="q${index}"]:checked`);
         
@@ -242,23 +196,273 @@ function handleSubmitQuiz() {
             const correctAnswer = q.correctAnswer;
             const correctLabel = questionDiv.querySelector(`input[value="${correctAnswer}"]`).parentElement;
             correctLabel.classList.add('correct');
+
             if (selectedAnswer === correctAnswer) {
                 score++;
+                updateMastery(q.lessonId, 20); // +20 puan
             } else {
                 selectedOption.parentElement.classList.add('incorrect');
+                incorrectLessons.add(q.lessonId);
+                updateMastery(q.lessonId, -10); // -10 puan
             }
         }
         questionDiv.querySelectorAll('input').forEach(input => input.disabled = true);
     });
-    quizResultsContainer.innerHTML = `<h3>Sonuç: ${currentQuizData.length} soruda ${score} doğru!</h3>`;
+
+    const scorePercentage = (score / testData.length) * 100;
+    quizResultsContainer.innerHTML = `<h3>Sonuç: ${testData.length} soruda ${score} doğru! (%${scorePercentage.toFixed(0)})</h3>`;
     document.getElementById('submit-quiz-btn').style.display = 'none';
+
+    await awardPoints(score * 5, 'Test Çözüldü');
+    if (scorePercentage === 100) {
+        await checkAndAwardBadges('perfect');
+    }
+
+    if (incorrectLessons.size > 0) {
+        generateRemediation(incorrectLessons);
+    } else {
+        remediationContainer.innerHTML = `<div class="widget"><h4>Harika iş!</h4><p>Tüm konuları doğru anladın. Bu patikayı tamamlayabilirsin.</p></div>`;
+    }
 }
 
-// ----- YARDIMCI FONKSİYONLAR -----
+async function generateRemediation(lessonIds) {
+    remediationContainer.innerHTML = `<div class="widget"><div class="spinner"></div><p>AI, zayıf olduğun konular için telafi modülü hazırlıyor...</p></div>`;
+    const failedTopics = currentPathwayData.microLessons
+        .filter(l => lessonIds.has(l.id))
+        .map(l => l.title);
+
+    try {
+        const prompt = `Bir öğrenci "${topicInput.value.trim()}" konusunda yaptığı testte şu alt başlıklarda hata yaptı: ${failedTopics.join(', ')}. Bu konuları daha iyi anlaması için her bir başlık için farklı bir yaklaşımla kısa bir açıklama veya bir analoji sun. Cevabın SADECE ve SADECE HTML formatında, class'ı "remediation-box" olan bir div içinde olsun.`;
+        const result = await puter.ai.chat([{ role: 'user', content: prompt }], { model: 'gpt-4o' });
+        remediationContainer.innerHTML = result.message.content;
+    } catch (error) {
+        remediationContainer.innerHTML = `<p class="error-message">Telafi modülü oluşturulamadı.</p>`;
+    }
+}
+
+// ----- ARAYÜZ RENDER FONKSİYONLARI -----
+function renderLearningPathway(data) {
+    // 1. Ön koşullar
+    if (data.prerequisites && data.prerequisites.length > 0) {
+        prerequisitesContainer.innerHTML = `
+            <div class="prerequisites-box widget">
+                <h4><i class="fas fa-exclamation-triangle"></i> Başlamadan Önce</h4>
+                <p>Bu konuyu tam olarak anlayabilmek için aşağıdaki konulara hakim olman önerilir:</p>
+                <ul>${data.prerequisites.map(p => `<li>${p}</li>`).join('')}</ul>
+            </div>`;
+    } else {
+        prerequisitesContainer.innerHTML = '';
+    }
+
+    // 2. Mikro Dersler
+    learningPathComponent.innerHTML = '<h3><i class="fas fa-shoe-prints"></i> Öğrenme Adımları</h3>';
+    data.microLessons.forEach((lesson, index) => {
+        const lessonEl = document.createElement('div');
+        lessonEl.className = 'micro-lesson-card';
+        lessonEl.innerHTML = `
+            <div class="lesson-header">
+                <h4>${index + 1}. ${lesson.title}</h4>
+                <i class="fas fa-chevron-down"></i>
+            </div>
+            <div class="lesson-content" style="display: none;">
+                <p class="memory-technique"><i class="fas fa-lightbulb"></i> <b>Hafıza Tekniği:</b> ${lesson.memoryTechnique}</p>
+                <div class="video-placeholder" id="video-${lesson.id}">
+                    <button class="primary-button load-video-btn" data-query="${lesson.youtubeSearchQuery}" data-target="video-${lesson.id}"><i class="fab fa-youtube"></i> Videoyu Yükle</button>
+                </div>
+                <label><input type="checkbox" class="lesson-complete-cb" data-lesson-id="${lesson.id}"> Bu adımı anladım ve tamamladım.</label>
+            </div>
+        `;
+        learningPathComponent.appendChild(lessonEl);
+    });
+    
+    // Akordiyon ve Video Yükleme Eventleri
+    learningPathComponent.querySelectorAll('.lesson-header').forEach(header => {
+        header.addEventListener('click', () => {
+            const content = header.nextElementSibling;
+            content.style.display = content.style.display === 'none' ? 'flex' : 'none';
+            header.querySelector('i').classList.toggle('fa-chevron-down');
+            header.querySelector('i').classList.toggle('fa-chevron-up');
+        });
+    });
+
+    learningPathComponent.querySelectorAll('.load-video-btn').forEach(button => {
+        button.addEventListener('click', async (e) => {
+            const query = e.target.dataset.query;
+            const targetId = e.target.dataset.target;
+            const container = document.getElementById(targetId);
+            container.innerHTML = '<div class="spinner"></div>';
+            try {
+                const videoData = await fetchBestVideo(query);
+                container.innerHTML = `<iframe src="https://www.youtube.com/embed/${videoData.id}" frameborder="0" allowfullscreen></iframe>`;
+            } catch (error) {
+                container.innerHTML = `<p class="error-message">Video yüklenemedi.</p>`;
+                showToast(error.message, "error");
+            }
+        });
+    });
+    
+    learningPathComponent.querySelectorAll('.lesson-complete-cb').forEach(checkbox => {
+        checkbox.addEventListener('change', (e) => {
+            if (e.target.checked) {
+                updateMastery(e.target.dataset.lessonId, 5); // +5 tamamlama puanı
+                scheduleNextReview(e.target.dataset.lessonId);
+            }
+        });
+    });
+
+    // 3. Ön Test
+    renderQuiz(data.preTest);
+    remediationContainer.innerHTML = '';
+}
+
+function renderDashboard(allPlans, userData, filterCategory) {
+    // 1. İstatistikler, GP ve Rozetler
+    const totalPlans = allPlans.length;
+    const completedPlans = allPlans.filter(p => p.isCompleted).length;
+    statsContainer.innerHTML = `<div><strong>${totalPlans}</strong><span>Toplam Patika</span></div><div><strong>${completedPlans}</strong><span>Tamamlanan</span></div>`;
+    gpDisplay.textContent = userData.gp || 0;
+    badgeContainer.innerHTML = (userData.badges || []).map(badgeId => 
+        `<i class="${BADGE_DEFINITIONS[badgeId].icon} badge" title="${BADGE_DEFINITIONS[badgeId].title}"></i>`
+    ).join('');
+
+    // 2. Kategori Filtresi ve Ustalık Haritası
+    const categories = [...new Set(allPlans.map(p => p.category).filter(Boolean))];
+    const currentFilter = categoryFilter.value;
+    categoryFilter.innerHTML = '<option value="all">Tüm Kategoriler</option>';
+    categories.forEach(cat => categoryFilter.innerHTML += `<option value="${cat}">${cat}</option>`);
+    categoryFilter.value = currentFilter;
+
+    renderMasteryChart(allPlans);
+    renderTodaysReviews(allPlans);
+}
+
+function renderMasteryChart(allPlans) {
+    const masteryData = {};
+    allPlans.forEach(plan => {
+        if (plan.mastery) {
+            const topic = plan.topic;
+            const scores = Object.values(plan.mastery);
+            const avgMastery = scores.reduce((a, b) => a + b, 0) / scores.length;
+            masteryData[topic] = avgMastery;
+        }
+    });
+
+    if (masteryChart) masteryChart.destroy();
+    masteryChart = new Chart(masteryChartCanvas, {
+        type: 'polarArea',
+        data: {
+            labels: Object.keys(masteryData),
+            datasets: [{
+                data: Object.values(masteryData),
+                backgroundColor: ['rgba(187, 134, 252, 0.5)', 'rgba(3, 218, 198, 0.5)', 'rgba(255, 2, 102, 0.5)', 'rgba(2, 166, 255, 0.5)', 'rgba(255, 222, 3, 0.5)'],
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: { r: { suggestedMin: 0, suggestedMax: 100, ticks: { backdropColor: 'transparent' }, grid: { color: 'rgba(255,255,255,0.1)' } } },
+            plugins: { legend: { display: false } }
+        }
+    });
+}
+
+function renderTodaysReviews(allPlans) {
+    const dueReviews = [];
+    const today = new Date().setHours(0, 0, 0, 0);
+    allPlans.forEach(plan => {
+        if(plan.pathway.microLessons) {
+            plan.pathway.microLessons.forEach(lesson => {
+                if(lesson.nextReviewDate && lesson.nextReviewDate.toDate().setHours(0,0,0,0) === today) {
+                    dueReviews.push({planId: plan.id, planTopic: plan.topic, lesson: lesson});
+                }
+            });
+        }
+    });
+
+    if (dueReviews.length === 0) {
+        todaysReviewsContainer.innerHTML = '<p>Bugün için planlanmış tekrar bulunmuyor.</p>';
+        return;
+    }
+
+    todaysReviewsContainer.innerHTML = dueReviews.map(review => `
+        <div class="review-item">
+            <span><strong>${review.planTopic}</strong>: ${review.lesson.title} konusunu tekrar et.</span>
+            <button class="primary-button review-btn" data-plan-id="${review.planId}">Git</button>
+        </div>
+    `).join('');
+    
+    todaysReviewsContainer.querySelectorAll('.review-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const plan = allPlans.find(p => p.id === btn.dataset.planId);
+            if(plan) renderPlanForEditing(plan);
+        });
+    });
+}
+
+
+function renderSavedPlans(allPlans, filterCategory) {
+    const filteredPlans = filterCategory === 'all' ? allPlans : allPlans.filter(plan => plan.category === filterCategory);
+    if (filteredPlans.length === 0) {
+        savedPlansContainer.innerHTML = '<p>Bu kategoride patika bulunamadı.</p>';
+        return;
+    }
+    
+    savedPlansContainer.innerHTML = filteredPlans.map(plan => `
+        <div class="plan-card ${plan.isCompleted ? 'completed' : ''}">
+            <span class="plan-category">${plan.category}</span>
+            <h4>${plan.topic}</h4>
+            <div class="plan-actions">
+                <button class="view-plan-btn" data-plan-id="${plan.id}"><i class="fas fa-edit"></i> Görüntüle</button>
+            </div>
+        </div>
+    `).join('');
+    
+    savedPlansContainer.querySelectorAll('.view-plan-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const plan = allPlans.find(p => p.id === btn.dataset.planId);
+            if (plan) renderPlanForEditing(plan);
+        });
+    });
+}
+
+
+function renderQuiz(quizData) {
+    let quizHTML = quizData.map((q, index) => `
+        <div class="quiz-question" id="question-${index}">
+            <p>${index + 1}. ${q.question}</p>
+            <div class="quiz-options">
+                ${q.options.map((opt, i) => `
+                    <label>
+                        <input type="radio" name="q${index}" value="${i}">
+                        <span>${opt}</span>
+                    </label>
+                `).join('')}
+            </div>
+        </div>
+    `).join('');
+    
+    quizHTML += '<button id="submit-quiz-btn" class="primary-button">Testi Bitir</button>';
+    quizContent.innerHTML = quizHTML;
+    quizResultsContainer.innerHTML = '';
+}
+
+function renderPlanForEditing(plan) {
+    clearGeneratorForm();
+    currentPlanId = plan.id;
+    topicInput.value = plan.topic;
+    categoryInput.value = plan.category;
+    currentPathwayData = plan.pathway;
+    
+    renderLearningPathway(currentPathwayData);
+    renderQuiz(currentPathwayData.preTest);
+
+    pathwayContainer.classList.remove('hidden');
+    handleNavClick(document.querySelector('.nav-link[data-view="generator-view"]'));
+}
+
+// ----- YARDIMCI & VERİ FONKSİYONLARI -----
 function handleNavClick(targetLink) {
     const viewId = targetLink.getAttribute('data-view');
     if (viewId === 'generator-view') {
-        currentPlanId = null;
         clearGeneratorForm();
     }
     views.forEach(view => view.classList.remove('active'));
@@ -267,61 +471,8 @@ function handleNavClick(targetLink) {
     targetLink.classList.add('active');
 }
 
-function updateStatsAndCategories(allPlans) {
-    const totalPlans = allPlans.length;
-    const completedPlans = allPlans.filter(p => p.isCompleted).length;
-    statsWidget.innerHTML = `<div><strong>${totalPlans}</strong><span>Toplam Paket</span></div><div><strong>${completedPlans}</strong><span>Tamamlanan</span></div>`;
-
-    const categories = [...new Set(allPlans.map(p => p.category).filter(Boolean))];
-    const currentFilter = categoryFilter.value;
-    categoryFilter.innerHTML = '<option value="all">Tüm Kategoriler</option>';
-    categories.forEach(cat => categoryFilter.innerHTML += `<option value="${cat}">${cat}</option>`);
-    categoryFilter.value = currentFilter;
-
-    const categoryCounts = allPlans.reduce((acc, plan) => { (acc[plan.category] = (acc[plan.category] || 0) + 1); return acc; }, {});
-    if (categoryChart) categoryChart.destroy();
-    categoryChart = new Chart(categoryChartCanvas, {
-        type: 'pie', data: { labels: Object.keys(categoryCounts), datasets: [{ data: Object.values(categoryCounts), backgroundColor: ['#BB86FC', '#03DAC6', '#FF0266', '#02A6FF', '#FFDE03'], borderColor: '#1E1E1E' }] },
-        options: { responsive: true, plugins: { legend: { position: 'top', labels: { color: '#E1E1E1' } } } }
-    });
-}
-
-function renderPlanForEditing(plan, startWithQuiz = false) {
-    currentPlanId = plan.id;
-    currentVideoId = plan.videoId;
-    topicInput.value = plan.topic;
-    categoryInput.value = plan.category;
-    videoContainer.innerHTML = `<iframe src="https://www.youtube.com/embed/${plan.videoId}" frameborder="0" allowfullscreen></iframe>`;
-    
-    learningPlanChecklist.innerHTML = '';
-    if (plan.learningPlan?.forEach) {
-        plan.learningPlan.forEach(step => addChecklistStep(step.text, step.completed));
-    }
-    keyConceptsInput.value = plan.keyConcepts || '';
-    
-    if (plan.quiz) {
-        currentQuizData = plan.quiz;
-        renderQuiz(plan.quiz, startWithQuiz);
-        if (startWithQuiz) handleSubmitQuiz();
-    } else {
-        renderQuizGeneratorButton();
-    }
-    resultsContainer.classList.remove('hidden');
-    handleNavClick(document.querySelector('.nav-link[data-view="generator-view"]'));
-}
-
-function renderQuizGeneratorButton() {
-    quizContent.innerHTML = '<button id="generate-quiz-btn" class="secondary-action-button full-width"><i class="fas fa-magic"></i> AI ile Test Oluştur</button>';
-    quizResultsContainer.innerHTML = '';
-    currentQuizData = null;
-}
-
 async function fetchBestVideo(query) {
-    let searchQuery = query;
-    if (query.toLowerCase().includes('matematik')) {
-        searchQuery = query + " Rehber Matematik";
-    }
-    const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(searchQuery)}&maxResults=1&type=video&key=${YOUTUBE_API_KEY}`;
+    const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query)}&maxResults=1&type=video&key=${YOUTUBE_API_KEY}`;
     const response = await fetch(url);
     if (!response.ok) throw new Error("YouTube API hatası.");
     const data = await response.json();
@@ -329,28 +480,79 @@ async function fetchBestVideo(query) {
     return { id: data.items[0].id.videoId, title: data.items[0].snippet.title };
 }
 
-function addChecklistStep(text = '', isChecked = false) {
-    const stepText = (typeof text === 'string' ? text : newStepInput.value).trim();
-    if (!stepText) return;
-    const li = document.createElement('li');
-    li.innerHTML = `<input type="checkbox" ${isChecked ? 'checked' : ''}><span contenteditable="true">${stepText}</span><button class="delete-step-btn">&times;</button>`;
-    li.querySelector('.delete-step-btn').addEventListener('click', () => li.remove());
-    learningPlanChecklist.appendChild(li);
-    if (typeof text !== 'string') newStepInput.value = '';
+async function updateMastery(lessonId, pointsToAdd) {
+    if (!currentPlanId) await saveCurrentPlan();
+    
+    const planRef = db.collection('users').doc(currentUser.uid).collection('plans').doc(currentPlanId);
+    const doc = await planRef.get();
+    const currentMastery = doc.data().mastery[lessonId] || 0;
+    const newMastery = Math.max(0, Math.min(100, currentMastery + pointsToAdd));
+
+    await planRef.update({ [`mastery.${lessonId}`]: newMastery });
+
+    if (newMastery === 100) {
+        await checkAndAwardBadges('master');
+    }
 }
 
-function getChecklistData() {
-    return Array.from(learningPlanChecklist.querySelectorAll('li')).map(li => ({ text: li.querySelector('span').textContent, completed: li.querySelector('input').checked }));
+async function awardPoints(points, reason) {
+    const userRef = db.collection('users').doc(currentUser.uid);
+    await userRef.set({
+        gp: firebase.firestore.FieldValue.increment(points)
+    }, { merge: true });
+    showToast(`+${points} GP (${reason})`, 'success');
+}
+
+async function checkAndAwardBadges(badgeToOrCheck) {
+    const userRef = db.collection('users').doc(currentUser.uid);
+    const doc = await userRef.get();
+    const userData = doc.data() || { badges: [] };
+    const currentBadges = userData.badges || [];
+    
+    if (!currentBadges.includes(badgeToOrCheck)) {
+        await userRef.update({
+            badges: firebase.firestore.FieldValue.arrayUnion(badgeToOrCheck)
+        });
+        showToast(`Yeni Rozet Kazandın: ${BADGE_DEFINITIONS[badgeToOrCheck].title}!`, 'success');
+    }
+}
+
+function scheduleNextReview(lessonId) {
+    if (!currentPlanId) return;
+    const nextReviewDate = new Date();
+    nextReviewDate.setDate(nextReviewDate.getDate() + 1); // Basitçe 1 gün sonraya ayarla
+
+    const planRef = db.collection('users').doc(currentUser.uid).collection('plans').doc(currentPlanId);
+    
+    const lessonPath = `pathway.microLessons`;
+    planRef.get().then(doc => {
+        const plan = doc.data();
+        const lessonIndex = plan.pathway.microLessons.findIndex(l => l.id === lessonId);
+        if(lessonIndex !== -1) {
+            plan.pathway.microLessons[lessonIndex].nextReviewDate = firebase.firestore.Timestamp.fromDate(nextReviewDate);
+            planRef.update({ pathway: plan.pathway });
+        }
+    });
 }
 
 function clearGeneratorForm() {
     topicInput.value = ''; categoryInput.value = '';
-    resultsContainer.classList.add('hidden');
-    learningPlanChecklist.innerHTML = ''; keyConceptsInput.value = '';
-    currentPlanId = null; currentVideoId = null; currentQuizData = null;
-    renderQuizGeneratorButton();
+    pathwayContainer.classList.add('hidden');
+    prerequisitesContainer.innerHTML = '';
+    learningPathComponent.innerHTML = '';
+    preTestContainer.innerHTML = '';
+    currentPlanId = null; currentPathwayData = null;
 }
 
+function updateStatus(message) { statusText.textContent = message; }
+function showToast(message, type = 'success') {
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`; toast.textContent = message;
+    toastContainer.appendChild(toast);
+    setTimeout(() => { toast.classList.add('show'); setTimeout(() => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 500); }, 4000); }, 100);
+}
+
+// ----- Pomodoro & Profil Yönetimi -----
 function togglePomodoro() {
     isPomoPaused = !isPomoPaused;
     pomoStartPauseBtn.innerHTML = isPomoPaused ? '<i class="fas fa-play"></i>' : '<i class="fas fa-pause"></i>';
@@ -362,19 +564,22 @@ function resetPomodoro() {
     updatePomoDisplay(); pomoStartPauseBtn.innerHTML = '<i class="fas fa-play"></i>';
 }
 function updatePomodoro() {
-    if (pomoSeconds === 0) { if (pomoMinutes === 0) { showToast("Pomodoro seansı tamamlandı!", "success"); resetPomodoro(); return; } pomoMinutes--; pomoSeconds = 59; } else { pomoSeconds--; }
+    if (pomoSeconds === 0) { 
+        if (pomoMinutes === 0) { 
+            showToast("Pomodoro seansı tamamlandı!", "success"); 
+            awardPoints(15, 'Pomodoro Tamamlandı');
+            resetPomodoro(); 
+            return; 
+        } 
+        pomoMinutes--; 
+        pomoSeconds = 59; 
+    } else { 
+        pomoSeconds--; 
+    }
     updatePomoDisplay();
 }
 function updatePomoDisplay() { pomoTimerDisplay.textContent = `${pomoMinutes.toString().padStart(2, '0')}:${pomoSeconds.toString().padStart(2, '0')}`; }
-function updateStatus(message) { statusText.textContent = message; }
-function showToast(message, type = 'success') {
-    const toast = document.createElement('div');
-    toast.className = `toast ${type}`; toast.textContent = message;
-    toastContainer.appendChild(toast);
-    setTimeout(() => { toast.classList.add('show'); setTimeout(() => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 500); }, 3000); }, 100);
-}
 
-// ----- Profil Yönetimi -----
 async function handleUpdateDisplayName() {
     const newName = displayNameInput.value.trim();
     if (!newName) return showToast("Görünen ad boş olamaz.", "error");

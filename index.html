@@ -16,7 +16,7 @@
             <h1 class="logo">NL</h1>
             <div class="nav-links">
                 <a href="#" class="nav-link active" data-view="dashboard-view"><i class="fas fa-chart-pie"></i><span>Kontrol Paneli</span></a>
-                <a href="#" class="nav-link" data-view="generator-view"><i class="fas fa-plus"></i><span>Yeni Paket</span></a>
+                <a href="#" class="nav-link" data-view="generator-view"><i class="fas fa-plus"></i><span>Yeni Patika</span></a>
                 <a href="#" class="nav-link" data-view="profile-view"><i class="fas fa-user-cog"></i><span>Profil</span></a>
             </div>
             <div id="pomodoro-widget">
@@ -38,14 +38,35 @@
                     <span id="user-display-name">Yükleniyor...</span>
                 </header>
                 <div class="dashboard-grid">
-                    <div id="stats-widget" class="widget"></div>
-                    <div id="chart-widget" class="widget">
-                        <h3>Kategori Dağılımı</h3>
-                        <canvas id="categoryChart"></canvas>
+                    <div id="gamification-widget" class="widget">
+                        <h3>Gelişim</h3>
+                        <div class="gamification-grid">
+                            <div id="stats-container"></div>
+                            <div id="gp-widget">
+                                <strong id="gp-display">0</strong>
+                                <span>Gelişim Puanı</span>
+                            </div>
+                            <div id="badges-widget">
+                                <h4>Rozetler</h4>
+                                <div class="badge-container" id="badge-container">
+                                    <!-- Rozetler buraya gelecek -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="mastery-widget" class="widget">
+                        <h3>Konu Ustalık Haritası</h3>
+                        <canvas id="masteryChart"></canvas>
                     </div>
                 </div>
+                <div id="reviews-widget" class="widget" style="margin-bottom: 2rem;">
+                     <h3>Bugünün Tekrarları</h3>
+                     <div id="todays-reviews-container">
+                         <p>Bugün için planlanmış tekrar bulunmuyor.</p>
+                     </div>
+                </div>
                  <div class="dashboard-actions">
-                    <h3>Öğrenme Paketlerim</h3>
+                    <h3>Gelişim Patikalarım</h3>
                     <div class="filter-wrapper">
                         <select id="category-filter">
                             <option value="all">Tüm Kategoriler</option>
@@ -58,7 +79,7 @@
             <!-- ===== OLUŞTURUCU GÖRÜNÜMÜ ===== -->
             <div id="generator-view" class="view">
                  <header class="view-header">
-                    <h2>Yeni Öğrenme Paketi Oluştur</h2>
+                    <h2>Yeni Gelişim Patikası Oluştur</h2>
                 </header>
                 <div class="generator-layout">
                     <div class="form-section widget">
@@ -70,38 +91,34 @@
                             <label for="category-input">Kategori</label>
                             <input type="text" id="category-input" placeholder="Örn: Matematik">
                         </div>
-                        <button id="fetch-button" class="primary-button"><i class="fab fa-youtube"></i> Video Bul</button>
+                        <button id="fetch-button" class="primary-button"><i class="fas fa-cogs"></i> Gelişim Patikası Oluştur</button>
                         <div id="status-indicator" style="display: none;">
                             <div class="spinner"></div>
-                            <p id="status-text">Video aranıyor...</p>
+                            <p id="status-text">AI, kişiselleştirilmiş öğrenme patikanı oluşturuyor...</p>
                         </div>
                     </div>
 
-                    <div id="results-container" class="hidden">
-                        <div class="widget">
-                            <h3>Konu Videosu</h3>
-                            <div id="video-container"></div>
+                    <div id="pathway-container" class="hidden">
+                        <!-- Ön koşul bilgisi -->
+                        <div id="prerequisites-container"></div>
+
+                        <!-- Mikro Dersler -->
+                        <div id="learning-path-container" class="widget">
+                            <h3><i class="fas fa-shoe-prints"></i> Öğrenme Adımları</h3>
+                            <!-- AI tarafından oluşturulan mikro dersler buraya gelecek -->
                         </div>
-                        <div id="quiz-widget" class="widget">
-                            <h3><i class="fas fa-question-circle"></i> Bilgini Test Et</h3>
-                            <div id="quiz-content">
-                                <!-- AI Test içeriği buraya gelecek -->
-                            </div>
-                            <div id="quiz-results-container"></div>
+
+                        <!-- Ön Test -->
+                        <div id="pre-test-container" class="widget">
+                             <h3><i class="fas fa-diagnoses"></i> Seviye Tespit Sınavı</h3>
+                             <div id="quiz-content"></div>
+                             <div id="quiz-results-container"></div>
                         </div>
-                        <div class="widget">
-                            <h3><i class="fas fa-tasks"></i> Öğrenme Adımları</h3>
-                            <div id="learning-plan-checklist"></div>
-                            <div class="add-step-wrapper">
-                                <input type="text" id="new-step-input" placeholder="Yeni bir adım ekle...">
-                                <button id="add-step-button">+</button>
-                            </div>
-                        </div>
-                        <div class="widget">
-                            <h3><i class="fas fa-key"></i> Anahtar Kavramlar</h3>
-                            <textarea id="key-concepts-input" placeholder="Konunun en önemli kavramlarını not al..."></textarea>
-                        </div>
-                        <button id="save-plan-button" class="primary-button full-width"><i class="fas fa-save"></i> Öğrenme Paketini Kaydet</button>
+                        
+                        <!-- Telafi Modülü -->
+                        <div id="remediation-container"></div>
+
+                        <button id="save-plan-button" class="primary-button full-width"><i class="fas fa-save"></i> Gelişim Patikasını Kaydet</button>
                     </div>
                 </div>
             </div>
@@ -137,7 +154,7 @@
     </div>
     
     <!-- Libraries -->
-    <script src="https://js.puter.com/v2/"></script> <!-- Yapay Zeka için Puter.js -->
+    <script src="https://js.puter.com/v2/"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
